@@ -1,0 +1,9 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Launcher" type="Application" factoryName="Application">
+    <option name="MAIN_CLASS_NAME" value="se233.vertor_magic.Launcher" />
+    <module name="vertor_magic" />
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>
