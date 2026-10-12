@@ -29,11 +29,7 @@ import java.io.IOException;
 import java.net.URL;
 import java.util.*;
 
-/**
- * Main Controller for Vector Magic.
- * Coordinates File Input / Drop Zone, Main Editor, Navigation,
- * Settings Configuration, Zoom Controls, Batch Preprocessing, and Export All.
- */
+
 public class MainController implements Initializable {
 
     @FXML private StackPane rootPane;
