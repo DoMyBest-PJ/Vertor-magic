@@ -569,46 +569,75 @@ public class ImageTracer{
 	public static ArrayList<ArrayList<Double[]>> internodes (ArrayList<ArrayList<Integer[]>> paths){
 		ArrayList<ArrayList<Double[]>> ins = new ArrayList<ArrayList<Double[]>>();
 		ArrayList<Double[]> thisinp;
-		Double[] thispoint, nextpoint = new Double[2];
-		Integer[] pp1, pp2, pp3;
-		int palen=0,nextidx=0,nextidx2=0;
+		int palen=0;
 
 		// paths loop
 		for(int pacnt=0; pacnt<paths.size(); pacnt++){
 			ins.add(new ArrayList<Double[]>());
 			thisinp = ins.get(ins.size()-1);
-			palen = paths.get(pacnt).size();
+			ArrayList<Integer[]> path = paths.get(pacnt);
+			palen = path.size();
+			if(palen < 3) continue;
+
 			// pathpoints loop
-			for(int pcnt=0;pcnt<palen;pcnt++){
+			for(int pcnt=0; pcnt<palen; pcnt++){
+				int previdx = (pcnt - 1 + palen) % palen;
+				int nextidx = (pcnt + 1) % palen;
+				Integer[] ppPrev = path.get(previdx);
+				Integer[] ppCur = path.get(pcnt);
+				Integer[] ppNext = path.get(nextidx);
 
-				// interpolate between two path points
-				nextidx = (pcnt+1)%palen; nextidx2 = (pcnt+2)%palen;
-				thisinp.add(new Double[3]);
-				thispoint = thisinp.get(thisinp.size()-1);
-				pp1 = paths.get(pacnt).get(pcnt);
-				pp2 = paths.get(pacnt).get(nextidx);
-				pp3 = paths.get(pacnt).get(nextidx2);
-				thispoint[0] = (pp1[0]+pp2[0]) / 2.0;
-				thispoint[1] = (pp1[1]+pp2[1]) / 2.0;
-				nextpoint[0] = (pp2[0]+pp3[0]) / 2.0;
-				nextpoint[1] = (pp2[1]+pp3[1]) / 2.0;
+				int kLook = Math.min(3, palen / 4);
+				int prevK = (pcnt - kLook + palen) % palen;
+				int nextK = (pcnt + kLook) % palen;
+				Integer[] ppPrevK = path.get(prevK);
+				Integer[] ppNextK = path.get(nextK);
 
-				// line segment direction to the next point
-				if(thispoint[0] < nextpoint[0]){
-					if     (thispoint[1] < nextpoint[1]){ thispoint[2] = 1.0; }// SouthEast
-					else if(thispoint[1] > nextpoint[1]){ thispoint[2] = 7.0; }// NE
-					else                                { thispoint[2] = 0.0; } // E
-				}else if(thispoint[0] > nextpoint[0]){
-					if     (thispoint[1] < nextpoint[1]){ thispoint[2] = 3.0; }// SW
-					else if(thispoint[1] > nextpoint[1]){ thispoint[2] = 5.0; }// NW
-					else                                { thispoint[2] = 4.0; }// W
-				}else{
-					if     (thispoint[1] < nextpoint[1]){ thispoint[2] = 2.0; }// S
-					else if(thispoint[1] > nextpoint[1]){ thispoint[2] = 6.0; }// N
-					else                                { thispoint[2] = 8.0; }// center, this should not happen
+				double v1x = ppCur[0] - ppPrevK[0], v1y = ppCur[1] - ppPrevK[1];
+				double v2x = ppNextK[0] - ppCur[0], v2y = ppNextK[1] - ppCur[1];
+				double len1 = Math.sqrt(v1x * v1x + v1y * v1y);
+				double len2 = Math.sqrt(v2x * v2x + v2y * v2y);
+
+				boolean isCorner = false;
+				if(len1 > 1e-4 && len2 > 1e-4){
+					double cosTheta = (v1x * v2x + v1y * v2y) / (len1 * len2);
+					isCorner = (cosTheta < 0.57);
 				}
 
-			}// End of pathpoints loop
+				Double[] pMid = new Double[3];
+				pMid[0] = (ppPrev[0] + ppCur[0]) / 2.0;
+				pMid[1] = (ppPrev[1] + ppCur[1]) / 2.0;
+				pMid[2] = 0.0;
+				thisinp.add(pMid);
+
+				if(isCorner){
+					Double[] pCorner = new Double[3];
+					pCorner[0] = (double) ppCur[0];
+					pCorner[1] = (double) ppCur[1];
+					pCorner[2] = 0.0;
+					thisinp.add(pCorner);
+				}
+			}
+
+			// calculate 8-direction segment types
+			int inplen = thisinp.size();
+			for(int i=0; i<inplen; i++){
+				Double[] cur = thisinp.get(i);
+				Double[] next = thisinp.get((i + 1) % inplen);
+				if(cur[0] < next[0]){
+					if     (cur[1] < next[1]){ cur[2] = 1.0; } // SouthEast
+					else if(cur[1] > next[1]){ cur[2] = 7.0; } // NE
+					else                     { cur[2] = 0.0; } // E
+				}else if(cur[0] > next[0]){
+					if     (cur[1] < next[1]){ cur[2] = 3.0; } // SW
+					else if(cur[1] > next[1]){ cur[2] = 5.0; } // NW
+					else                     { cur[2] = 4.0; } // W
+				}else{
+					if     (cur[1] < next[1]){ cur[2] = 2.0; } // S
+					else if(cur[1] > next[1]){ cur[2] = 6.0; } // N
+					else                     { cur[2] = 8.0; } // center
+				}
+			}
 		}// End of paths loop
 		return ins;
 	}// End of internodes()
@@ -677,93 +706,132 @@ public class ImageTracer{
 	// called from tracepath()
 	public static ArrayList<Double[]> fitseq (ArrayList<Double[]> path, float ltreshold, float qtreshold, int seqstart, int seqend){
 		ArrayList<Double[]> segment = new ArrayList<Double[]>();
-		Double [] thissegment;
 		int pathlength = path.size();
 
 		// return if invalid seqend
 		if((seqend>pathlength)||(seqend<0)){return segment;}
 
-		int errorpoint=seqstart;
-		boolean curvepass=true;
-		double px, py, dist2, errorval=0;
-		double tl = (seqend-seqstart); if(tl<0){ tl += pathlength; }
-		double vx = (path.get(seqend)[0]-path.get(seqstart)[0]) / tl,
-				vy = (path.get(seqend)[1]-path.get(seqstart)[1]) / tl;
+		double x1 = path.get(seqstart)[0], y1 = path.get(seqstart)[1];
+		double x2 = path.get(seqend)[0], y2 = path.get(seqend)[1];
+		double dx = x2 - x1, dy = y2 - y1;
+		double lenSq = dx * dx + dy * dy;
 
-		// 5.2. Fit a straight line on the sequence
-		int pcnt = (seqstart+1)%pathlength;
-		double pl;
-		while(pcnt != seqend){
-			pl = pcnt-seqstart; if(pl<0){ pl += pathlength; }
-			px = path.get(seqstart)[0] + (vx * pl); py = path.get(seqstart)[1] + (vy * pl);
-			dist2 = ((path.get(pcnt)[0]-px)*(path.get(pcnt)[0]-px)) + ((path.get(pcnt)[1]-py)*(path.get(pcnt)[1]-py));
-			if(dist2>ltreshold){curvepass=false;}
-			if(dist2>errorval){ errorpoint=pcnt; errorval=dist2; }
-			pcnt = (pcnt+1)%pathlength;
+		int count = seqend - seqstart;
+		if (count < 0) count += pathlength;
+		if (count == 0) return segment;
+
+		// Cumulative chord distances along the discrete contour
+		double[] cumDist = new double[count + 1];
+		cumDist[0] = 0;
+		for (int i = 1; i <= count; i++) {
+			int pPrev = (seqstart + i - 1) % pathlength;
+			int pCur = (seqstart + i) % pathlength;
+			double dpx = path.get(pCur)[0] - path.get(pPrev)[0];
+			double dpy = path.get(pCur)[1] - path.get(pPrev)[1];
+			cumDist[i] = cumDist[i - 1] + Math.sqrt(dpx * dpx + dpy * dpy);
+		}
+		double totalChord = cumDist[count];
+		if (totalChord < 1e-6) totalChord = 1e-6;
+
+		// 5.2. Test straight line fit using true perpendicular point-to-segment distance
+		boolean linePass = true;
+		int errorpoint = seqstart;
+		double maxError = 0.0;
+		double ltresSq = (double) ltreshold * (double) ltreshold;
+
+		for (int i = 1; i < count; i++) {
+			int pCur = (seqstart + i) % pathlength;
+			double px = path.get(pCur)[0], py = path.get(pCur)[1];
+			double distSq;
+			if (lenSq < 1e-9) {
+				distSq = (px - x1) * (px - x1) + (py - y1) * (py - y1);
+			} else {
+				double u = ((px - x1) * dx + (py - y1) * dy) / lenSq;
+				if (u < 0.0) u = 0.0;
+				else if (u > 1.0) u = 1.0;
+				double projX = x1 + u * dx;
+				double projY = y1 + u * dy;
+				distSq = (px - projX) * (px - projX) + (py - projY) * (py - projY);
+			}
+
+			if (distSq > ltresSq) linePass = false;
+			if (distSq > maxError) {
+				maxError = distSq;
+				errorpoint = pCur;
+			}
 		}
 
-		// return straight line if fits
-		if(curvepass){
-			segment.add(new Double[7]);
-			thissegment = segment.get(segment.size()-1);
-			thissegment[0] = 1.0;
-			thissegment[1] = path.get(seqstart)[0];
-			thissegment[2] = path.get(seqstart)[1];
-			thissegment[3] = path.get(seqend)[0];
-			thissegment[4] = path.get(seqend)[1];
-			thissegment[5] = 0.0;
-			thissegment[6] = 0.0;
+		// Return straight line if fits
+		if (linePass) {
+			Double[] seg = new Double[7];
+			seg[0] = 1.0;
+			seg[1] = x1; seg[2] = y1;
+			seg[3] = x2; seg[4] = y2;
+			seg[5] = 0.0; seg[6] = 0.0;
+			segment.add(seg);
 			return segment;
 		}
 
-		// 5.3. If the straight line fails (an error>ltreshold), find the point with the biggest error
-		int fitpoint = errorpoint; curvepass = true; errorval = 0;
+		// 5.3. Straight line failed: quadratic Bézier spline fitting using chord-length parameterization
+		int fitpoint = errorpoint;
+		int fitIndex = fitpoint - seqstart;
+		if (fitIndex < 0) fitIndex += pathlength;
+		double tFit = cumDist[fitIndex] / totalChord;
+		if (tFit < 0.05) tFit = 0.05;
+		if (tFit > 0.95) tFit = 0.95;
 
-		// 5.4. Fit a quadratic spline through this point, measure errors on every point in the sequence
-		// helpers and projecting to get control point
-		double t=(fitpoint-seqstart)/tl, t1=(1.0-t)*(1.0-t), t2=2.0*(1.0-t)*t, t3=t*t;
-		double cpx = (((t1*path.get(seqstart)[0]) + (t3*path.get(seqend)[0])) - path.get(fitpoint)[0])/-t2 ,
-				cpy = (((t1*path.get(seqstart)[1]) + (t3*path.get(seqend)[1])) - path.get(fitpoint)[1])/-t2 ;
+		double t1 = (1.0 - tFit) * (1.0 - tFit);
+		double t2 = 2.0 * (1.0 - tFit) * tFit;
+		double t3 = tFit * tFit;
+		double cpx = (((t1 * x1) + (t3 * x2)) - path.get(fitpoint)[0]) / -t2;
+		double cpy = (((t1 * y1) + (t3 * y2)) - path.get(fitpoint)[1]) / -t2;
 
-		// Check every point
-		pcnt = seqstart+1;
-		while(pcnt != seqend){
+		boolean curvePass = true;
+		maxError = 0.0;
+		errorpoint = seqstart;
+		double qtresSq = (double) qtreshold * (double) qtreshold;
 
-			t=(pcnt-seqstart)/tl; t1=(1.0-t)*(1.0-t); t2=2.0*(1.0-t)*t; t3=t*t;
-			px = (t1 * path.get(seqstart)[0]) + (t2 * cpx) + (t3 * path.get(seqend)[0]);
-			py = (t1 * path.get(seqstart)[1]) + (t2 * cpy) + (t3 * path.get(seqend)[1]);
+		for (int i = 1; i < count; i++) {
+			int pCur = (seqstart + i) % pathlength;
+			double t = cumDist[i] / totalChord;
+			double b1 = (1.0 - t) * (1.0 - t);
+			double b2 = 2.0 * (1.0 - t) * t;
+			double b3 = t * t;
+			double bx = (b1 * x1) + (b2 * cpx) + (b3 * x2);
+			double by = (b1 * y1) + (b2 * cpy) + (b3 * y2);
 
-			dist2 = ((path.get(pcnt)[0]-px)*(path.get(pcnt)[0]-px)) + ((path.get(pcnt)[1]-py)*(path.get(pcnt)[1]-py));
+			double px = path.get(pCur)[0], py = path.get(pCur)[1];
+			double distSq = (px - bx) * (px - bx) + (py - by) * (py - by);
 
-			if(dist2>qtreshold){curvepass=false;}
-			if(dist2>errorval){ errorpoint=pcnt; errorval=dist2; }
-			pcnt = (pcnt+1)%pathlength;
+			if (distSq > qtresSq) curvePass = false;
+			if (distSq > maxError) {
+				maxError = distSq;
+				errorpoint = pCur;
+			}
 		}
 
-		// return spline if fits
-		if(curvepass){
-			segment.add(new Double[7]);
-			thissegment = segment.get(segment.size()-1);
-			thissegment[0] = 2.0;
-			thissegment[1] = path.get(seqstart)[0];
-			thissegment[2] = path.get(seqstart)[1];
-			thissegment[3] = cpx;
-			thissegment[4] = cpy;
-			thissegment[5] = path.get(seqend)[0];
-			thissegment[6] = path.get(seqend)[1];
+		// Return spline if fits
+		if (curvePass) {
+			Double[] seg = new Double[7];
+			seg[0] = 2.0;
+			seg[1] = x1; seg[2] = y1;
+			seg[3] = cpx; seg[4] = cpy;
+			seg[5] = x2; seg[6] = y2;
+			segment.add(seg);
 			return segment;
 		}
 
-		// 5.5. If the spline fails (an error>qtreshold), find the point with the biggest error,
-		// set splitpoint = (fitting point + errorpoint)/2
-		int splitpoint = (fitpoint + errorpoint)/2;
+		// 5.5. Spline failed: split at peak error point (Douglas-Peucker)
+		int splitpoint = (errorpoint != seqstart && errorpoint != seqend) ? errorpoint : fitpoint;
+		if (splitpoint == seqstart || splitpoint == seqend) {
+			splitpoint = (seqstart + (count / 2)) % pathlength;
+		}
 
-		// 5.6. Split sequence and recursively apply 5.2. - 5.6. to startpoint-splitpoint and splitpoint-endpoint sequences
-		segment = fitseq(path,ltreshold,qtreshold,seqstart,splitpoint);
-		segment.addAll(fitseq(path,ltreshold,qtreshold,splitpoint,seqend));
+		// 5.6. Recursively fit left and right halves
+		segment = fitseq(path, ltreshold, qtreshold, seqstart, splitpoint);
+		segment.addAll(fitseq(path, ltreshold, qtreshold, splitpoint, seqend));
 		return segment;
-
-	}// End of fitseq()
+	}
 
 
 	// 5. Batch tracing paths
@@ -858,8 +926,8 @@ public class ImageTracer{
 		if(options.get("desc")!=0){ svgstr.append("desc=\"Created with ImageTracer.java version "+ImageTracer.versionnumber+"\" "); }
 		svgstr.append(">");
 
-		// creating Z-index
-		TreeMap <Double,Integer[]> zindex = new TreeMap <Double,Integer[]>();
+		// creating Z-index (using List to prevent silent overwriting of paths with identical coordinates)
+		TreeMap <Double, ArrayList<Integer[]>> zindex = new TreeMap <Double, ArrayList<Integer[]>>();
 		double label;
 		// Layer loop
 		for(int k=0; k<ii.layers.size(); k++) {
@@ -869,11 +937,8 @@ public class ImageTracer{
 
 				// Label (Z-index key) is the startpoint of the path, linearized
 				label = (ii.layers.get(k).get(pcnt).get(0)[2] * w) + ii.layers.get(k).get(pcnt).get(0)[1];
-				// Creating new list if required
-				if(!zindex.containsKey(label)){ zindex.put(label,new Integer[2]); }
-				// Adding layer and path number to list
-				zindex.get(label)[0] = Integer.valueOf(k);
-				zindex.get(label)[1] = Integer.valueOf(pcnt);
+				if(!zindex.containsKey(label)){ zindex.put(label, new ArrayList<Integer[]>()); }
+				zindex.get(label).add(new Integer[]{Integer.valueOf(k), Integer.valueOf(pcnt)});
 			}// End of path loop
 
 		}// End of layer loop
@@ -881,17 +946,20 @@ public class ImageTracer{
 		// Drawing
 		// Z-index loop
 		String thisdesc = "";
-		for(Entry<Double, Integer[]> entry : zindex.entrySet()) {
-			int layerIdx = entry.getValue()[0];
-			if(removeBackground && layerIdx == bgLayerIdx){
-				continue; // Skip rendering background layer to produce transparent SVG
+		for(Entry<Double, ArrayList<Integer[]>> entry : zindex.entrySet()) {
+			for(Integer[] kp : entry.getValue()) {
+				int layerIdx = kp[0];
+				int pathIdx = kp[1];
+				if(removeBackground && layerIdx == bgLayerIdx){
+					continue; // Skip rendering background layer to produce transparent SVG
+				}
+				if(options.get("desc")!=0){ thisdesc = "desc=\"l "+layerIdx+" p "+pathIdx+"\" "; }else{ thisdesc = ""; }
+				svgpathstring(svgstr,
+						thisdesc,
+						ii.layers.get(layerIdx).get(pathIdx),
+						tosvgcolorstr(ii.palette[layerIdx], options),
+						options);
 			}
-			if(options.get("desc")!=0){ thisdesc = "desc=\"l "+layerIdx+" p "+entry.getValue()[1]+"\" "; }else{ thisdesc = ""; }
-			svgpathstring(svgstr,
-					thisdesc,
-					ii.layers.get(layerIdx).get(entry.getValue()[1]),
-					tosvgcolorstr(ii.palette[layerIdx], options),
-					options);
 		}
 
 		// SVG End

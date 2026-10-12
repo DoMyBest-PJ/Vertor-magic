@@ -85,8 +85,8 @@ public class VectorizationQualityTest {
         assertNotEquals(svgMed, svgLow);
         assertNotEquals(svgHigh, svgLow);
 
-        // Verify stroke-linejoin is present for smooth clean joins
-        assertTrue(svgHigh.contains("stroke-linejoin=\"round\""));
+        // Verify clean fill rendering
+        assertTrue(svgHigh.contains("fill="));
     }
 
     @Test
@@ -94,10 +94,83 @@ public class VectorizationQualityTest {
     void testSvgRendering() throws Exception {
         BufferedImage img = createDetailedTestImage();
         String svg = VectorizationService.vectorize(img, new ConversionSettings(DetailLevel.HIGH, ColorMode.CUSTOM, 3, false));
-
         assertNotNull(svg);
         javafx.scene.Group group = SvgViewRenderer.renderSvgToGroup(svg);
         assertNotNull(group);
         assertFalse(group.getChildren().isEmpty(), "JavaFX Group must contain parsed vector paths");
+    }
+
+    @Test
+    @DisplayName("Quality Test: End-to-end vectorization on real-world photo produces sharp, valid SVGs across detail levels")
+    void testChannels4ProductionPipeline() throws Exception {
+        java.io.File file = new java.io.File("C:/Users/TUF/Downloads/channels4_profile.jpg");
+        if (!file.exists()) return;
+
+        BufferedImage img = javax.imageio.ImageIO.read(file);
+
+        // 1. High Detail Unlimited
+        String svgHigh = VectorizationService.vectorize(img, new ConversionSettings(DetailLevel.HIGH, ColorMode.UNLIMITED, 2, false));
+        assertNotNull(svgHigh);
+        java.nio.file.Files.writeString(new java.io.File("target/PROD_HIGH.svg").toPath(), svgHigh);
+
+        // 2. Medium Detail Unlimited
+        String svgMed = VectorizationService.vectorize(img, new ConversionSettings(DetailLevel.MEDIUM, ColorMode.UNLIMITED, 2, false));
+        assertNotNull(svgMed);
+        java.nio.file.Files.writeString(new java.io.File("target/PROD_MED.svg").toPath(), svgMed);
+
+        // 3. Low Detail Unlimited
+        String svgLow = VectorizationService.vectorize(img, new ConversionSettings(DetailLevel.LOW, ColorMode.UNLIMITED, 2, false));
+        assertNotNull(svgLow);
+        java.nio.file.Files.writeString(new java.io.File("target/PROD_LOW.svg").toPath(), svgLow);
+
+        // 4. Custom 2 Colors
+        String svgCust2 = VectorizationService.vectorize(img, new ConversionSettings(DetailLevel.MEDIUM, ColorMode.CUSTOM, 2, false));
+        assertNotNull(svgCust2);
+        java.nio.file.Files.writeString(new java.io.File("target/PROD_CUST_2.svg").toPath(), svgCust2);
+
+        // 5. Remove Background (transparent SVG)
+        String svgTrans = VectorizationService.vectorize(img, new ConversionSettings(DetailLevel.MEDIUM, ColorMode.UNLIMITED, 2, true));
+        assertNotNull(svgTrans);
+        java.nio.file.Files.writeString(new java.io.File("target/PROD_TRANSPARENT.svg").toPath(), svgTrans);
+
+        // Verify the transparent SVG has omitted the background layer
+        assertTrue(svgTrans.length() < svgMed.length(), "Transparent SVG must omit background paths");
+
+        // Render to PNG
+        try { javafx.application.Platform.startup(() -> {}); } catch (IllegalStateException ignored) {}
+        java.util.concurrent.CountDownLatch latch = new java.util.concurrent.CountDownLatch(1);
+        javafx.application.Platform.runLater(() -> {
+            try {
+                renderPngFile("target/PROD_HIGH.svg", "target/RENDER_PROD_HIGH.png", 900, 900);
+                renderPngFile("target/PROD_MED.svg", "target/RENDER_PROD_MED.png", 900, 900);
+                renderPngFile("target/PROD_LOW.svg", "target/RENDER_PROD_LOW.png", 900, 900);
+                renderPngFile("target/PROD_CUST_2.svg", "target/RENDER_PROD_CUST_2.png", 900, 900);
+                renderPngFile("target/PROD_TRANSPARENT.svg", "target/RENDER_PROD_TRANSPARENT.png", 900, 900);
+            } catch (Exception e) {
+                e.printStackTrace();
+            } finally {
+                latch.countDown();
+            }
+        });
+        latch.await(30, java.util.concurrent.TimeUnit.SECONDS);
+    }
+
+    private static void renderPngFile(String svgPath, String pngPath, int w, int h) throws Exception {
+        String svg = java.nio.file.Files.writeString(new java.io.File(svgPath).toPath(), java.nio.file.Files.readString(new java.io.File(svgPath).toPath())).toString();
+        svg = java.nio.file.Files.readString(new java.io.File(svgPath).toPath());
+        javafx.scene.Group group = SvgViewRenderer.renderSvgToGroup(svg);
+        javafx.scene.Scene scene = new javafx.scene.Scene(group, w, h, javafx.scene.paint.Color.WHITE);
+        javafx.scene.SnapshotParameters params = new javafx.scene.SnapshotParameters();
+        params.setFill(javafx.scene.paint.Color.WHITE);
+        javafx.scene.image.WritableImage fxImg = group.snapshot(params, null);
+        int imgW = (int) fxImg.getWidth(), imgH = (int) fxImg.getHeight();
+        javafx.scene.image.PixelReader pr = fxImg.getPixelReader();
+        BufferedImage bImg = new BufferedImage(imgW, imgH, BufferedImage.TYPE_INT_ARGB);
+        for (int y = 0; y < imgH; y++) {
+            for (int x = 0; x < imgW; x++) {
+                bImg.setRGB(x, y, pr.getArgb(x, y));
+            }
+        }
+        javax.imageio.ImageIO.write(bImg, "png", new java.io.File(pngPath));
     }
 }

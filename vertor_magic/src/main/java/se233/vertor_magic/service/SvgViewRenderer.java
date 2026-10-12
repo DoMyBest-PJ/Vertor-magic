@@ -18,6 +18,8 @@ public class SvgViewRenderer {
     private static final Pattern D_PATTERN = Pattern.compile("d=\"([^\"]+)\"");
     private static final Pattern FILL_PATTERN = Pattern.compile("fill=\"([^\"]+)\"");
     private static final Pattern OPACITY_PATTERN = Pattern.compile("opacity=\"([^\"]+)\"");
+    private static final Pattern STROKE_PATTERN = Pattern.compile("stroke=\"([^\"]+)\"");
+    private static final Pattern STROKE_WIDTH_PATTERN = Pattern.compile("stroke-width=\"([^\"]+)\"");
     private static final Pattern RGB_PATTERN = Pattern.compile("rgb\\((\\d+)\\s*,\\s*(\\d+)\\s*,\\s*(\\d+)\\)");
 
     /**
@@ -49,11 +51,29 @@ public class SvgViewRenderer {
                 String fillStr = fillMatcher.group(1);
                 Color fillColor = parseColor(fillStr);
                 svgPath.setFill(fillColor);
-                svgPath.setStroke(fillColor);
-                svgPath.setStrokeWidth(0.1);
-                svgPath.setStrokeLineJoin(javafx.scene.shape.StrokeLineJoin.ROUND);
             } else {
                 svgPath.setFill(Color.BLACK);
+            }
+
+            // Parse stroke
+            Matcher strokeMatcher = STROKE_PATTERN.matcher(pathAttrs);
+            Matcher strokeWidthMatcher = STROKE_WIDTH_PATTERN.matcher(pathAttrs);
+            if (strokeMatcher.find()) {
+                String strokeStr = strokeMatcher.group(1);
+                if (!strokeStr.equalsIgnoreCase("none")) {
+                    svgPath.setStroke(parseColor(strokeStr));
+                    if (strokeWidthMatcher.find()) {
+                        try {
+                            double sw = Double.parseDouble(strokeWidthMatcher.group(1));
+                            svgPath.setStrokeWidth(sw);
+                            svgPath.setStrokeLineJoin(javafx.scene.shape.StrokeLineJoin.ROUND);
+                        } catch (NumberFormatException ignored) {}
+                    }
+                } else {
+                    svgPath.setStroke(null);
+                }
+            } else {
+                svgPath.setStroke(null);
             }
 
             // Parse opacity
