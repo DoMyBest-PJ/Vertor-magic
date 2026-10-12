@@ -53,13 +53,34 @@ public class PaletteQuantizer {
         sorted.sort((a, b) -> Integer.compare(b.getValue(), a.getValue()));
 
         List<Color> result = new ArrayList<>();
-        // Pure white background is always reserved as base
-        result.add(Color.WHITE);
+        // Reserve the detected background color as the base palette entry
+        Color bgColor = ColorDetector.detectBackgroundColor(image);
+        result.add(new Color(bgColor.getRed(), bgColor.getGreen(), bgColor.getBlue()));
 
         // Calculate dynamic minimum distance based on requested targetColors
         double minDistance = Math.max(14.0, 160.0 / Math.pow(targetColors, 0.45));
 
         // Pass 1: Extract dominant colors that satisfy minimum perceptual distance
+        addCandidatesByDistance(sorted, result, targetColors, minDistance);
+
+        // Pass 2: If more palette slots remain, relax distance slightly
+        if (result.size() < targetColors) {
+            double relaxedDist = Math.max(8.0, minDistance * 0.55);
+            addCandidatesByDistance(sorted, result, targetColors, relaxedDist);
+        }
+
+        // Pass 3: Fill remaining slots with any remaining distinct histogram bins
+        if (result.size() < targetColors) {
+            addCandidatesByDistance(sorted, result, targetColors, 1.0);
+        }
+
+        return result;
+    }
+
+    private static void addCandidatesByDistance(List<Map.Entry<Integer, Integer>> sorted,
+                                                List<Color> result,
+                                                int targetColors,
+                                                double threshold) {
         for (Map.Entry<Integer, Integer> entry : sorted) {
             if (result.size() >= targetColors) break;
             int key = entry.getKey();
@@ -73,7 +94,7 @@ public class PaletteQuantizer {
                 double dr = candidate.getRed() - existing.getRed();
                 double dg = candidate.getGreen() - existing.getGreen();
                 double db = candidate.getBlue() - existing.getBlue();
-                if (Math.sqrt(dr * dr + dg * dg + db * db) < minDistance) {
+                if (Math.sqrt(dr * dr + dg * dg + db * db) < threshold) {
                     tooClose = true;
                     break;
                 }
@@ -82,35 +103,6 @@ public class PaletteQuantizer {
                 result.add(candidate);
             }
         }
-
-        // Pass 2: If more palette slots remain, relax distance slightly
-        if (result.size() < targetColors) {
-            double relaxedDist = Math.max(10.0, minDistance * 0.7);
-            for (Map.Entry<Integer, Integer> entry : sorted) {
-                if (result.size() >= targetColors) break;
-                int key = entry.getKey();
-                int r = (key >> 16) & 0xFF;
-                int g = (key >> 8) & 0xFF;
-                int b = key & 0xFF;
-                Color candidate = new Color(r, g, b);
-
-                boolean tooClose = false;
-                for (Color existing : result) {
-                    double dr = candidate.getRed() - existing.getRed();
-                    double dg = candidate.getGreen() - existing.getGreen();
-                    double db = candidate.getBlue() - existing.getBlue();
-                    if (Math.sqrt(dr * dr + dg * dg + db * db) < relaxedDist) {
-                        tooClose = true;
-                        break;
-                    }
-                }
-                if (!tooClose) {
-                    result.add(candidate);
-                }
-            }
-        }
-
-        return result;
     }
 
     /**

@@ -1,20 +1,16 @@
 package se233.vertor_magic.controller;
 
-import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
+import javafx.scene.Group;
 import javafx.scene.control.*;
 import javafx.scene.image.ImageView;
-import javafx.scene.input.DragEvent;
-import javafx.scene.input.Dragboard;
-import javafx.scene.input.TransferMode;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
-import javafx.scene.Group;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.FileChooser;
 import se233.vertor_magic.model.ColorMode;
@@ -25,18 +21,15 @@ import se233.vertor_magic.service.*;
 
 import java.awt.Desktop;
 import java.io.File;
-import java.io.IOException;
 import java.net.URL;
 import java.util.*;
 
-
+/**
+ * Main Editor Controller for main-view.fxml.
+ * Coordinates the Main Editor, Navigation, Settings Configuration,
+ * Zoom Controls, Batch Preprocessing, and Export All.
+ */
 public class MainController implements Initializable {
-
-    @FXML private StackPane rootPane;
-    @FXML private VBox dropZoneContainer;
-    @FXML private VBox dropCard;
-    @FXML private Button btnBrowseFiles;
-    @FXML private Button btnBrowseZip;
 
     @FXML private BorderPane editorContainer;
     @FXML private HBox topToolBar;
@@ -75,7 +68,6 @@ public class MainController implements Initializable {
     @FXML private CheckBox chkRemoveBackground;
 
     @FXML private Button btnResetSettings;
-    @FXML private Button btnCancel;
     @FXML private Button btnHistory;
     @FXML private Button btnExportAll;
     @FXML private Button btnImportMore;
@@ -109,65 +101,8 @@ public class MainController implements Initializable {
     }
 
     // =========================================================================
-    // TASK 1: FILE INPUT & DRAG AND DROP
+    // TASK 1: FILE IMPORT INTO EDITOR
     // =========================================================================
-
-    @FXML
-    public void onDropZoneOver(DragEvent event) {
-        if (event.getDragboard().hasFiles()) {
-            event.acceptTransferModes(TransferMode.COPY);
-            if (!dropCard.getStyleClass().contains("drop-card-active")) {
-                dropCard.getStyleClass().add("drop-card-active");
-            }
-        }
-        event.consume();
-    }
-
-    @FXML
-    public void onDropZoneExited(DragEvent event) {
-        dropCard.getStyleClass().remove("drop-card-active");
-        event.consume();
-    }
-
-    @FXML
-    public void onDropZoneDropped(DragEvent event) {
-        Dragboard db = event.getDragboard();
-        boolean success = false;
-        if (db.hasFiles()) {
-            List<File> files = db.getFiles();
-            importFiles(files);
-            success = true;
-        }
-        event.setDropCompleted(success);
-        dropCard.getStyleClass().remove("drop-card-active");
-        event.consume();
-    }
-
-    @FXML
-    public void onBrowseFilesClicked(ActionEvent event) {
-        FileChooser chooser = new FileChooser();
-        chooser.setTitle("Select Image Files (JPG / PNG)");
-        chooser.getExtensionFilters().add(
-                new FileChooser.ExtensionFilter("Image Files (*.png, *.jpg, *.jpeg)", "*.png", "*.jpg", "*.jpeg")
-        );
-        List<File> selected = chooser.showOpenMultipleDialog(rootPane.getScene().getWindow());
-        if (selected != null && !selected.isEmpty()) {
-            importFiles(selected);
-        }
-    }
-
-    @FXML
-    public void onBrowseZipClicked(ActionEvent event) {
-        FileChooser chooser = new FileChooser();
-        chooser.setTitle("Select ZIP Archive");
-        chooser.getExtensionFilters().add(
-                new FileChooser.ExtensionFilter("ZIP Archive (*.zip)", "*.zip")
-        );
-        File zipFile = chooser.showOpenDialog(rootPane.getScene().getWindow());
-        if (zipFile != null) {
-            importFiles(Collections.singletonList(zipFile));
-        }
-    }
 
     @FXML
     public void onImportMoreClicked(ActionEvent event) {
@@ -178,14 +113,22 @@ public class MainController implements Initializable {
                 new FileChooser.ExtensionFilter("Images", "*.png", "*.jpg", "*.jpeg"),
                 new FileChooser.ExtensionFilter("ZIP Archives", "*.zip")
         );
-        List<File> selected = chooser.showOpenMultipleDialog(rootPane.getScene().getWindow());
+        List<File> selected = chooser.showOpenMultipleDialog(editorContainer.getScene().getWindow());
         if (selected != null && !selected.isEmpty()) {
             importFiles(selected);
         }
     }
 
-    private void importFiles(List<File> rawFiles) {
-        if (rawFiles == null || rawFiles.isEmpty()) return;
+    /**
+     * Imports a list of image or ZIP files into the editor.
+     * Called by DropZoneController when transitioning from drop-zone-view.fxml,
+     * or by onImportMoreClicked inside the editor.
+     *
+     * @param rawFiles List of selected or dropped files
+     * @return true if at least one valid image was loaded
+     */
+    public boolean importFiles(List<File> rawFiles) {
+        if (rawFiles == null || rawFiles.isEmpty()) return false;
 
         List<File> imagesToLoad = new ArrayList<>();
         List<String> errors = new ArrayList<>();
@@ -213,7 +156,7 @@ public class MainController implements Initializable {
             if (imageItems.isEmpty()) {
                 lblStatus.setText("No valid images imported.");
             }
-            return;
+            return false;
         }
 
         // Convert files to ImageItem objects
@@ -227,16 +170,10 @@ public class MainController implements Initializable {
             }
         }
 
-        if (newItems.isEmpty()) return;
+        if (newItems.isEmpty()) return false;
 
         boolean wasEmpty = imageItems.isEmpty();
         imageItems.addAll(newItems);
-
-        // Transition from Drop Zone to Editor
-        dropZoneContainer.setVisible(false);
-        dropZoneContainer.setManaged(false);
-        editorContainer.setVisible(true);
-        editorContainer.setManaged(true);
 
         if (wasEmpty) {
             currentIndex = 0;
@@ -247,6 +184,8 @@ public class MainController implements Initializable {
         if (imageItems.size() > 1 || !imageItems.get(currentIndex).isProcessed()) {
             startBatchPreprocessing();
         }
+
+        return true;
     }
 
     // =========================================================================
@@ -437,7 +376,7 @@ public class MainController implements Initializable {
 
         DirectoryChooser chooser = new DirectoryChooser();
         chooser.setTitle("Select Destination Folder for SVG Export");
-        File selectedDir = chooser.showDialog(rootPane.getScene().getWindow());
+        File selectedDir = chooser.showDialog(editorContainer.getScene().getWindow());
 
         if (selectedDir != null) {
             progressBar.setProgress(0.0);
@@ -459,7 +398,7 @@ public class MainController implements Initializable {
     }
 
     // =========================================================================
-    // TASK 12: ADDITIONAL FEATURES (RESET, CANCEL, HISTORY)
+    // TASK 12: ADDITIONAL FEATURES (RESET, HISTORY)
     // =========================================================================
 
     @FXML
@@ -474,17 +413,6 @@ public class MainController implements Initializable {
 
         onSettingChanged();
         lblStatus.setText("Settings reset to defaults (Medium detail, Custom 2 colors, opaque).");
-    }
-
-    @FXML
-    public void onCancelClicked(ActionEvent event) {
-        batchProcessingService.cancel();
-        fileExportService.cancel();
-        if (activeTracingTask != null && activeTracingTask.isRunning()) {
-            activeTracingTask.cancel();
-        }
-        progressBar.setProgress(0.0);
-        lblStatus.setText("Active processing cancelled.");
     }
 
     @FXML

@@ -22,6 +22,10 @@ public class VectorizationService {
             settings = new ConversionSettings();
         }
 
+        // Pre-condition image to eliminate compression artifacts and sharpen edges
+        int tolerance = getDenoiseTolerance(settings.getDetailLevel());
+        BufferedImage conditionedImage = ImagePreconditioner.denoise(image, tolerance);
+
         HashMap<String, Float> options = ImageTracer.checkoptions(null);
 
         options.put("viewbox", 1f);
@@ -30,12 +34,13 @@ public class VectorizationService {
 
         applyDetailLevelSettings(options, settings.getDetailLevel());
 
-        byte[][] palette = preparePalette(image, options, settings);
+        byte[][] palette = preparePalette(conditionedImage, options, settings);
 
-        ImageTracer.ImageData imgd = ImageTracer.loadImageData(image);
+        ImageTracer.ImageData imgd = ImageTracer.loadImageData(conditionedImage);
         ImageTracer.IndexedImage ii = ImageTracer.imagedataToTracedata(imgd, options, palette);
 
-        int bgLayerIdx = detectBackgroundLayerIndex(ii);
+        Color detectedBgColor = ColorDetector.detectBackgroundColor(conditionedImage);
+        int bgLayerIdx = detectBackgroundLayerIndex(ii, detectedBgColor);
 
         return ImageTracer.getsvgstring(ii, options, settings.isRemoveBackground(), bgLayerIdx);
     }
@@ -53,6 +58,19 @@ public class VectorizationService {
         item.setSvgContent(svg);
         item.setProcessed(true);
         item.setProcessingError(null);
+    }
+
+    private static int getDenoiseTolerance(DetailLevel detailLevel) {
+        if (detailLevel == null) return 14;
+        switch (detailLevel) {
+            case HIGH:
+                return 8;
+            case LOW:
+                return 20;
+            case MEDIUM:
+            default:
+                return 14;
+        }
     }
 
     private static void applyDetailLevelSettings(HashMap<String, Float> options, DetailLevel detailLevel) {
@@ -101,7 +119,7 @@ public class VectorizationService {
             List<Color> paletteColors = ColorDetector.extractDominantColors(image, numColors);
             return PaletteQuantizer.toTracerPalette(paletteColors);
         }
-        // if in UNLIMITED mode return null. let imageTracer analyze color cluster
+        // if in UNLIMITED mode = quantize optimal perceptual palette up to detail level target
         else {
             DetailLevel detail = settings.getDetailLevel();
             int numColors;
@@ -118,17 +136,17 @@ public class VectorizationService {
                     break;
             }
 
-            options.put("numberofcolors", (float) numColors);
+            List<Color> quantizedColors = PaletteQuantizer.quantize(image, numColors);
+            options.put("numberofcolors", (float) quantizedColors.size());
             options.put("colorsampling", 1f);
             options.put("colorquantcycles", 3f);
             options.put("mincolorratio", 0.005f);
 
-            // In unlimited mode, null palette lets ImageTracer dynamically cluster full image colors
-            return null;
+            return PaletteQuantizer.toTracerPalette(quantizedColors);
         }
     }
 
-    private static int detectBackgroundLayerIndex(ImageTracer.IndexedImage ii) {
+    private static int detectBackgroundLayerIndex(ImageTracer.IndexedImage ii, Color detectedBgColor) {
         if (ii == null || ii.array == null || ii.array.length == 0 || ii.palette == null) {
             return -1;
         }
@@ -164,11 +182,30 @@ public class VectorizationService {
         }
 
         int mostFrequentIdx = -1;
-        int maxCount = -1;
+        double bestScore = -1.0;
         for (Map.Entry<Integer, Integer> entry : cornerCounts.entrySet()) {
-            if (entry.getValue() > maxCount) {
-                maxCount = entry.getValue();
-                mostFrequentIdx = entry.getKey();
+            int idx = entry.getKey();
+            int freq = entry.getValue();
+            double score = freq;
+
+            if (detectedBgColor != null && idx >= 0 && idx < ii.palette.length) {
+                int pr = ii.palette[idx][0] + 128;
+                int pg = ii.palette[idx][1] + 128;
+                int pb = ii.palette[idx][2] + 128;
+                double dist = Math.sqrt(
+                        Math.pow(pr - detectedBgColor.getRed(), 2) +
+                        Math.pow(pg - detectedBgColor.getGreen(), 2) +
+                        Math.pow(pb - detectedBgColor.getBlue(), 2)
+                );
+                // Boost score when the border layer matches the detected background color
+                if (dist < 30.0) {
+                    score += 10.0;
+                }
+            }
+
+            if (score > bestScore) {
+                bestScore = score;
+                mostFrequentIdx = idx;
             }
         }
 
