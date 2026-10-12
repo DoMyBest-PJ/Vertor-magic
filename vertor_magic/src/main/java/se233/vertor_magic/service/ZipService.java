@@ -29,10 +29,14 @@ public class ZipService {
         }
 
         List<File> extractedFiles = new ArrayList<>();
+
         Path tempDir = Files.createTempDirectory("vector_magic_" + UUID.randomUUID().toString().substring(0, 8));
 
+//        Extract zip file
         try (ZipInputStream zis = new ZipInputStream(new FileInputStream(zipFile))) {
             ZipEntry entry;
+
+            // loop read file
             while ((entry = zis.getNextEntry()) != null) {
                 if (entry.isDirectory()) {
                     zis.closeEntry();
@@ -40,12 +44,17 @@ public class ZipService {
                 }
 
                 String entryName = entry.getName();
+
                 // Skip macOS resource fork files and hidden files
-                if (entryName.startsWith("__MACOSX") || entryName.contains("/.") || entryName.startsWith(".")) {
+                if (entryName.startsWith("__MACOSX")
+                        || entryName.contains("/.")
+                        || entryName.startsWith(".")) {
+
                     zis.closeEntry();
                     continue;
                 }
 
+                // Check this file is img?
                 if (isImageExtension(entryName)) {
                     // Normalize file name to avoid directory traversal
                     String simpleName = new File(entryName).getName();
@@ -59,9 +68,16 @@ public class ZipService {
                     // Avoid duplicate filenames in zip
                     int counter = 1;
                     while (Files.exists(targetFile)) {
+
+                        // get only file name
                         String nameWithoutExt = simpleName.substring(0, simpleName.lastIndexOf('.'));
+
+                        // get only file extraction
                         String ext = simpleName.substring(simpleName.lastIndexOf('.'));
+
+                        // add "_" + counter behind filename
                         targetFile = tempDir.resolve(nameWithoutExt + "_" + counter + ext);
+
                         counter++;
                     }
 
@@ -86,17 +102,26 @@ public class ZipService {
         return extractedFiles;
     }
 
+    // Check is this zip file?
     public static boolean isZipFile(File file) {
-        if (file == null || !file.isFile()) return false;
+        if (file == null || !file.isFile()) {
+            return false;
+        }
+
         String name = file.getName().toLowerCase();
         return name.endsWith(".zip");
     }
 
+    // check is this img?
     public static boolean isImageFile(File file) {
-        if (file == null || !file.isFile()) return false;
+        if (file == null || !file.isFile()) {
+            return false;
+        }
+
         return isImageExtension(file.getName());
     }
 
+    // check is this support file?
     private static boolean isImageExtension(String filename) {
         String lower = filename.toLowerCase();
         for (String ext : SUPPORTED_EXTENSIONS) {

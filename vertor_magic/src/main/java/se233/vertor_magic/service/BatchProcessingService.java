@@ -24,11 +24,8 @@ public class BatchProcessingService {
     /**
      * Batch preprocesses a list of ImageItems with default settings (Medium detail, 2 Custom colors).
      */
-    public void preprocessBatch(List<ImageItem> items,
-                                Consumer<Double> progressCallback,
-                                Consumer<String> statusCallback,
-                                Consumer<ImageItem> itemCompletedCallback,
-                                Runnable onFinishedCallback) {
+    public void preprocessBatch(List<ImageItem> items, Consumer<Double> progressCallback, Consumer<String> statusCallback, Consumer<ImageItem> itemCompletedCallback, Runnable onFinishedCallback) {
+
         if (items == null || items.isEmpty()) {
             if (onFinishedCallback != null) Platform.runLater(onFinishedCallback);
             return;

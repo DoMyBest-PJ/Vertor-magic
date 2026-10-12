@@ -54,7 +54,9 @@ public class ImageTracer{
 
 	public static String versionnumber = "1.1.2";
 
-	public ImageTracer(){}
+	public ImageTracer(){
+
+	}
 
 	public static void main (String[] args){
 		try{
@@ -147,6 +149,7 @@ public class ImageTracer{
 		BufferedImage image = ImageIO.read(new File(filename));
 		return loadImageData(image);
 	}
+
 	public static ImageData loadImageData (BufferedImage image) throws Exception {
 		int width = image.getWidth(); int height = image.getHeight();
 		int[] rawdata = image.getRGB(0, 0, width, height, null, 0, width);
@@ -273,9 +276,12 @@ public class ImageTracer{
 
 		// Use custom palette if pal is defined or sample or generate custom length palette
 		if(palette==null){
+
 			if(options.get("colorsampling")!=0){
 				palette = samplepalette(numberofcolors,imgd);
-			}else{
+			}
+
+			else{
 				palette = generatepalette(numberofcolors);
 			}
 		}

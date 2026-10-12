@@ -14,7 +14,10 @@ public class ColorDetector {
      * Counts the number of unique colors in the image (or samples if large image).
      */
     public static int countUniqueColors(BufferedImage image) {
-        if (image == null) return 0;
+        if (image == null) {
+            return 0;
+        }
+
         int width = image.getWidth();
         int height = image.getHeight();
 
@@ -37,7 +40,6 @@ public class ColorDetector {
     }
 
     /**
-     * In Custom mode (Task 5):
      * If the image contains more than 5 colors, the custom selection limit must be capped at 5.
      * If it contains fewer than 5 (e.g. 3), the max limit is that count (minimum 2).
      */

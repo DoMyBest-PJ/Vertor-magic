@@ -38,20 +38,20 @@ public class ImageItem {
         this.isProcessed = false;
     }
 
-    public ImageItem(File file, BufferedImage bi) {
-        this.sourceFile = file;
-        this.originalFileName = file != null ? file.getName() : "extracted_image.png";
-        this.bufferedImage = bi;
-        if (file != null && file.exists()) {
-            this.fxImage = new Image(file.toURI().toString());
-        }
-        this.settings = new ConversionSettings();
-        this.isProcessed = false;
-    }
+//    public ImageItem(File file, BufferedImage bi) {
+//        this.sourceFile = file;
+//        this.originalFileName = file != null ? file.getName() : "extracted_image.png";
+//        this.bufferedImage = bi;
+//        if (file != null && file.exists()) {
+//            this.fxImage = new Image(file.toURI().toString());
+//        }
+//        this.settings = new ConversionSettings();
+//        this.isProcessed = false;
+//    }
 
-    public File getSourceFile() {
-        return sourceFile;
-    }
+//    public File getSourceFile() {
+//        return sourceFile;
+//    }
 
     public String getOriginalFileName() {
         return originalFileName;
@@ -66,20 +66,20 @@ public class ImageItem {
         return bufferedImage;
     }
 
-    public void setBufferedImage(BufferedImage bufferedImage) {
-        this.bufferedImage = bufferedImage;
-        if (sourceFile != null && sourceFile.exists()) {
-            this.fxImage = new Image(sourceFile.toURI().toString());
-        } else if (bufferedImage != null) {
-            try {
-                java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
-                ImageIO.write(bufferedImage, "png", baos);
-                this.fxImage = new Image(new java.io.ByteArrayInputStream(baos.toByteArray()));
-            } catch (Exception e) {
-                this.fxImage = null;
-            }
-        }
-    }
+//    public void setBufferedImage(BufferedImage bufferedImage) {
+//        this.bufferedImage = bufferedImage;
+//        if (sourceFile != null && sourceFile.exists()) {
+//            this.fxImage = new Image(sourceFile.toURI().toString());
+//        } else if (bufferedImage != null) {
+//            try {
+//                java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+//                ImageIO.write(bufferedImage, "png", baos);
+//                this.fxImage = new Image(new java.io.ByteArrayInputStream(baos.toByteArray()));
+//            } catch (Exception e) {
+//                this.fxImage = null;
+//            }
+//        }
+//    }
 
     public Image getFxImage() {
         return fxImage;

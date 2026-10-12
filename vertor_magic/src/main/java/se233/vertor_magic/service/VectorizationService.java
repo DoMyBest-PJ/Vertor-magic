@@ -66,6 +66,7 @@ public class VectorizationService {
                 options.put("pathomit", 8.0f);
                 options.put("strokewidth", 0.4f);
                 break;
+
             case HIGH:
                 // High fidelity: razor-sharp edges, intact fine typography, nuanced gradation
                 options.put("ltres", 0.8f);
@@ -73,6 +74,7 @@ public class VectorizationService {
                 options.put("pathomit", 4.0f);
                 options.put("strokewidth", 0.3f);
                 break;
+
             case MEDIUM:
             default:
                 // Balanced vector illustration: clean curved contours, smooth posterized tonal steps
@@ -85,6 +87,8 @@ public class VectorizationService {
     }
 
     private static byte[][] preparePalette(BufferedImage image, HashMap<String, Float> options, ConversionSettings settings) {
+
+        // if in CUSTOM mode = choose 2-5 dominant color
         if (settings.getColorMode() == ColorMode.CUSTOM) {
             int numColors = settings.getCustomColorCount();
             numColors = Math.max(2, Math.min(5, numColors));
@@ -96,7 +100,9 @@ public class VectorizationService {
 
             List<Color> paletteColors = ColorDetector.extractDominantColors(image, numColors);
             return PaletteQuantizer.toTracerPalette(paletteColors);
-        } else {
+        }
+        // if in UNLIMITED mode return null. let imageTracer analyze color cluster
+        else {
             DetailLevel detail = settings.getDetailLevel();
             int numColors;
             switch (detail) {
