@@ -19,7 +19,7 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * Controller for drop-zone-view.fxml (Task 1: Initial File Input & Drag-and-Drop Screen).
+ * Controller for drop-zone-view.fxml (Initial File Input & Drag-and-Drop Screen).
  * Connects and transitions to main-view.fxml (MainController) once valid files are imported.
  */
 public class DropZoneController {

@@ -19,8 +19,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
 /**
- * Handles exporting all imported images as SVG files to a user-selected destination directory.
- * Implements Task 8, Task 9, and Task 12 (Export record & folder opener).
+ * Handles batch SVG export, conditional parallel export execution, and export history tracking.
  */
 public class FileExportService {
 
@@ -45,7 +44,7 @@ public class FileExportService {
 
     /**
      * Exports all items to the chosen destination folder.
-     * Uses Task 9 conditional parallel processing:
+     * Uses conditional parallel processing:
      * - Medium + Custom (2-5 colors) -> parallel threads.
      * - Otherwise -> single sequential thread.
      */
@@ -66,7 +65,7 @@ public class FileExportService {
             return;
         }
 
-        // Task 9 check
+        // Check conditional parallel processing eligibility
         boolean isParallel = activeSettings != null && activeSettings.isParallelEligible() && items.size() > 1;
         int threadCount = isParallel ? Math.min(items.size(), Math.max(2, Runtime.getRuntime().availableProcessors())) : 1;
         String modeDesc = isParallel ? "Parallel Export (" + threadCount + " threads)" : "Sequential Export (1 thread)";

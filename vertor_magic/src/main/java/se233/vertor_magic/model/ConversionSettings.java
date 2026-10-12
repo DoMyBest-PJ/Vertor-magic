@@ -12,8 +12,8 @@ public class ConversionSettings {
     private boolean removeBackground;
 
     public ConversionSettings() {
-        // Defaults per Task 7 and Task 9:
-        // Preprocessing and default state: Medium detail and 2 custom colors
+        // Default settings for batch preprocessing and parallel eligibility:
+        // Medium detail and 2 custom colors
         this.detailLevel = DetailLevel.MEDIUM;
         this.colorMode = ColorMode.CUSTOM;
         this.customColorCount = 2;
@@ -42,7 +42,7 @@ public class ConversionSettings {
     }
 
     /**
-     * Checks if current settings satisfy Task 9 conditional parallel processing:
+     * Checks if current settings satisfy conditional parallel processing:
      * Condition 1: Detail level is Medium.
      * Condition 2: Color mode is Custom, with a color limit of up to 5 and a default of 2 (range 2 to 5).
      */

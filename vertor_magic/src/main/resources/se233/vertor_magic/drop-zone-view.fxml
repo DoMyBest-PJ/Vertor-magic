@@ -7,7 +7,7 @@
 <?import javafx.scene.layout.Region?>
 <?import javafx.scene.layout.VBox?>
 
-<!-- Task 1: Drop Zone / File Input Initial View -->
+<!-- Drop Zone / File Input Initial View -->
 <VBox fx:id="dropZoneContainer" alignment="CENTER" prefHeight="780.0" prefWidth="1160.0" spacing="20.0" styleClass="drop-zone-container" stylesheets="@styles.css" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="se233.vertor_magic.controller.DropZoneController">
    <children>
       <VBox fx:id="dropCard" alignment="CENTER" maxHeight="450.0" maxWidth="650.0" onDragDropped="#onDropZoneDropped" onDragExited="#onDropZoneExited" onDragOver="#onDropZoneOver" spacing="16.0" styleClass="drop-card" VBox.vgrow="NEVER">

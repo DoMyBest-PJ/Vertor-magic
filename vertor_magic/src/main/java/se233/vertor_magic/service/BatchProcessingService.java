@@ -11,8 +11,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
 /**
- * Service managing batch preprocessing and batch conversion.
- * Implements Task 7 (Batch Preprocessing) and Task 9 (Conditional Parallel Processing).
+ * Service managing batch preprocessing and conditional parallel batch conversion.
  */
 public class BatchProcessingService {
 
@@ -30,7 +29,7 @@ public class BatchProcessingService {
     }
 
     /**
-     * Executes batch conversion on ImageItems according to Task 9 Conditional Parallel Processing.
+     * Executes batch conversion on ImageItems using Conditional Parallel Processing.
      */
     public void processBatch(List<ImageItem> items,
                              ConversionSettings settings,
@@ -45,7 +44,7 @@ public class BatchProcessingService {
 
         ConversionSettings effectiveSettings = settings != null ? settings : new ConversionSettings();
 
-        // Task 9: Conditional Parallel Processing evaluation
+        // Conditional Parallel Processing evaluation:
         // Concurrent ONLY WHEN BOTH conditions are satisfied:
         // 1. Detail level is Medium.
         // 2. Color mode is Custom, with color limit up to 5 and default 2.

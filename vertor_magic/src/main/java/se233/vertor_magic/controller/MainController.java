@@ -101,7 +101,7 @@ public class MainController implements Initializable {
     }
 
     // =========================================================================
-    // TASK 1: FILE IMPORT INTO EDITOR
+    // FILE IMPORT INTO EDITOR
     // =========================================================================
 
     @FXML
@@ -180,7 +180,7 @@ public class MainController implements Initializable {
             updateEditorUI();
         }
 
-        // Task 7: Batch Preprocessing (concurrent across files, progress feedback)
+        // Batch Preprocessing (concurrent across files, progress feedback)
         if (imageItems.size() > 1 || !imageItems.get(currentIndex).isProcessed()) {
             startBatchPreprocessing();
         }
@@ -189,7 +189,7 @@ public class MainController implements Initializable {
     }
 
     // =========================================================================
-    // TASK 7: BATCH PREPROCESSING
+    // BATCH PREPROCESSING
     // =========================================================================
 
     private void startBatchPreprocessing() {
@@ -215,7 +215,7 @@ public class MainController implements Initializable {
     }
 
     // =========================================================================
-    // TASK 2.B: TOP PANEL (ZOOM IN, ZOOM OUT, ZOOM TO FIT)
+    // TOP TOOLBAR: ZOOM CONTROLS (ZOOM IN, ZOOM OUT, ZOOM TO FIT)
     // =========================================================================
 
     @FXML
@@ -256,7 +256,7 @@ public class MainController implements Initializable {
     }
 
     // =========================================================================
-    // TASK 3: IMAGE NAVIGATION (BACK & NEXT)
+    // IMAGE NAVIGATION (BACK & NEXT)
     // =========================================================================
 
     @FXML
@@ -283,7 +283,7 @@ public class MainController implements Initializable {
     }
 
     // =========================================================================
-    // TASK 4, 5, 6: CONFIGURATION (DETAIL, COLOR, BACKGROUND) & INSTANT PREVIEW
+    // CONVERSION CONFIGURATION (DETAIL, COLOR, BACKGROUND) & INSTANT PREVIEW
     // =========================================================================
 
     @FXML
@@ -364,7 +364,7 @@ public class MainController implements Initializable {
     }
 
     // =========================================================================
-    // TASK 8: EXPORT ALL
+    // BATCH SVG EXPORT (EXPORT ALL)
     // =========================================================================
 
     @FXML
@@ -398,7 +398,7 @@ public class MainController implements Initializable {
     }
 
     // =========================================================================
-    // TASK 12: ADDITIONAL FEATURES (RESET, HISTORY)
+    // EXTRA TOOLS (RESET SETTINGS & EXPORT HISTORY)
     // =========================================================================
 
     @FXML
@@ -477,7 +477,7 @@ public class MainController implements Initializable {
         int detected = current.getDetectedColorCount();
         lblDetectedColors.setText("Detected Colors: " + detected);
 
-        // Task 5: Cap custom selection limit at 5 if image contains > 5 colors
+        // Cap custom color selection limit at 5 if image contains > 5 colors
         int maxAllowed = ColorDetector.getCustomColorUpperLimit(detected);
         int currentVal = current.getSettings().getCustomColorCount();
         int safeVal = Math.min(maxAllowed, Math.max(2, currentVal));
@@ -538,10 +538,10 @@ public class MainController implements Initializable {
     private void updateParallelBadge() {
         ConversionSettings s = buildCurrentSettingsFromUI();
         if (s.isParallelEligible()) {
-            lblParallelStatus.setText("Task 9: Parallel Mode (Medium + Custom)");
+            lblParallelStatus.setText("Parallel Mode (Medium + Custom)");
             lblParallelStatus.getStyleClass().setAll("parallel-badge");
         } else {
-            lblParallelStatus.setText("Task 9: Sequential Mode (" + s.getDetailLevel() + " + " + s.getColorMode() + ")");
+            lblParallelStatus.setText("Sequential Mode (" + s.getDetailLevel() + " + " + s.getColorMode() + ")");
             lblParallelStatus.getStyleClass().setAll("sequential-badge");
         }
     }
