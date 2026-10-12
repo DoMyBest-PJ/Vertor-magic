@@ -14,7 +14,8 @@ public class ImagePreconditioner {
      * Sharpens text and logo outlines, eliminates JPEG ringing in solid shapes,
      * and maintains smooth tonal transitions in gradient regions.
      *
-     * @param src Source image
+     * @param src            Source image
+     * @param colorTolerance Maximum local color span considered homogeneous for denoising
      * @return Filtered image optimized for vector tracing
      */
     public static BufferedImage denoise(BufferedImage src, int colorTolerance) {
@@ -46,6 +47,12 @@ public class ImagePreconditioner {
                 int minB = cb, maxB = cb;
                 int sumR = 0, sumG = 0, sumB = 0, count = 0;
 
+                int cLum = (cr * 77 + cg * 150 + cb * 29) >> 8;
+                int minLum = cLum, maxLum = cLum;
+                int minRgb = center & 0x00FFFFFF;
+                int maxRgb = center & 0x00FFFFFF;
+                int sumLum = 0;
+
                 for (int dy = -1; dy <= 1; dy++) {
                     int ny = y + dy;
                     if (ny < 0 || ny >= h) continue;
@@ -61,6 +68,17 @@ public class ImagePreconditioner {
                         minG = Math.min(minG, ng); maxG = Math.max(maxG, ng);
                         minB = Math.min(minB, nb); maxB = Math.max(maxB, nb);
                         sumR += nr; sumG += ng; sumB += nb;
+
+                        int nLum = (nr * 77 + ng * 150 + nb * 29) >> 8;
+                        sumLum += nLum;
+                        if (nLum < minLum) {
+                            minLum = nLum;
+                            minRgb = nRgb & 0x00FFFFFF;
+                        }
+                        if (nLum > maxLum) {
+                            maxLum = nLum;
+                            maxRgb = nRgb & 0x00FFFFFF;
+                        }
                         count++;
                     }
                 }
@@ -69,16 +87,11 @@ public class ImagePreconditioner {
 
                 // High-contrast edge (fine typography, sharp logo contours)
                 if (maxSpan >= 36) {
-                    int meanR = sumR / count;
-                    int meanG = sumG / count;
-                    int meanB = sumB / count;
-
-                    // Shock filter step: snap toward local extremum
-                    int outR = (cr < meanR) ? minR : maxR;
-                    int outG = (cg < meanG) ? minG : maxG;
-                    int outB = (cb < meanB) ? minB : maxB;
-                    dstPix[idx] = (ca << 24) | (outR << 16) | (outG << 8) | outB;
-                } else if (maxSpan <= 14) {
+                    int meanLum = sumLum / count;
+                    // Shock filter step: snap toward actual local extremum neighbor color
+                    int snappedRgb = (cLum <= meanLum) ? minRgb : maxRgb;
+                    dstPix[idx] = (ca << 24) | snappedRgb;
+                } else if (maxSpan <= colorTolerance) {
                     // Homogeneous region: average out JPEG DCT ringing artifacts
                     dstPix[idx] = (ca << 24) | ((sumR / count) << 16) | ((sumG / count) << 8) | (sumB / count);
                 } else {

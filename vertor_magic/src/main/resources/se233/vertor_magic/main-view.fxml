@@ -177,14 +177,11 @@
                         <Label styleClass="preview-subtext" text="(Produces transparent SVG output)" />
                         <Separator />
 
-                        <!-- Task 12: Additional Features (Cancel & Reset & History) -->
+                        <!-- Task 12: Additional Features (Reset & History) -->
                         <Label styleClass="section-title" text="Extra Tools" />
                         <VBox spacing="8.0">
                            <children>
                               <Button fx:id="btnResetSettings" maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#onResetSettingsClicked" styleClass="btn-secondary" text="↺ Reset Settings" />
-
-<!--                              <Button fx:id="btnCancel" maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#onCancelClicked" styleClass="btn-danger" text="✖ Cancel Processing" />-->
-                              
                               <Button fx:id="btnHistory" maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#onHistoryClicked" styleClass="btn-secondary" text="📁 Export History" />
                            </children>
                         </VBox>

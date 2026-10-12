@@ -75,7 +75,6 @@ public class MainController implements Initializable {
     @FXML private CheckBox chkRemoveBackground;
 
     @FXML private Button btnResetSettings;
-    @FXML private Button btnCancel;
     @FXML private Button btnHistory;
     @FXML private Button btnExportAll;
     @FXML private Button btnImportMore;
@@ -459,7 +458,7 @@ public class MainController implements Initializable {
     }
 
     // =========================================================================
-    // TASK 12: ADDITIONAL FEATURES (RESET, CANCEL, HISTORY)
+    // TASK 12: ADDITIONAL FEATURES (RESET, HISTORY)
     // =========================================================================
 
     @FXML
@@ -474,17 +473,6 @@ public class MainController implements Initializable {
 
         onSettingChanged();
         lblStatus.setText("Settings reset to defaults (Medium detail, Custom 2 colors, opaque).");
-    }
-
-    @FXML
-    public void onCancelClicked(ActionEvent event) {
-        batchProcessingService.cancel();
-        fileExportService.cancel();
-        if (activeTracingTask != null && activeTracingTask.isRunning()) {
-            activeTracingTask.cancel();
-        }
-        progressBar.setProgress(0.0);
-        lblStatus.setText("Active processing cancelled.");
     }
 
     @FXML
