@@ -96,9 +96,9 @@
                   <Label styleClass="section-title" text="Image Navigation" />
                   <HBox alignment="CENTER" spacing="10.0">
                      <children>
-                        <Button fx:id="btnBack" mnemonicParsing="false" onAction="#onBackClicked" styleClass="nav-button" text="◀ Back" />
+                        <Button fx:id="btnBack" mnemonicParsing="false" onAction="#onBackClicked" text="Back" />
                         <Label fx:id="lblImageCounter" styleClass="nav-counter" text="1 / 1" />
-                        <Button fx:id="btnNext" mnemonicParsing="false" onAction="#onNextClicked" styleClass="nav-button" text="Next ▶" />
+                        <Button fx:id="btnNext" mnemonicParsing="false" onAction="#onNextClicked" text="Next" />
                      </children>
                   </HBox>
                   <Label fx:id="lblCurrentFileName" alignment="CENTER" maxWidth="1.7976931348623157E308" styleClass="preview-subtext" text="filename.png" textAlignment="CENTER" />
@@ -153,16 +153,16 @@
                   <Label styleClass="section-title" text="Extra Tools" />
                   <VBox spacing="8.0">
                      <children>
-                        <Button fx:id="btnResetSettings" maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#onResetSettingsClicked" styleClass="btn-secondary" text="↺ Reset Settings" />
-                        <Button fx:id="btnHistory" maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#onHistoryClicked" styleClass="btn-secondary" text="📁 Export History" />
+                        <Button fx:id="btnResetSettings" maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#onResetSettingsClicked" text="Reset Settings" />
+                        <Button fx:id="btnHistory" maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#onHistoryClicked" text="Export History" />
                      </children>
                   </VBox>
                   <Separator />
 
                   <!-- Task 2.C & Task 8: Export All Button -->
                   <Label styleClass="section-title" text="Batch Export" />
-                  <Button fx:id="btnExportAll" maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#onExportAllClicked" styleClass="btn-primary" text="⬇ Export All (SVG)" />
-                  <Button fx:id="btnImportMore" maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#onImportMoreClicked" styleClass="btn-secondary" text="+ Import More Images" />
+                  <Button fx:id="btnExportAll" maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#onExportAllClicked" styleClass="btn-primary" text="Export All (SVG)" />
+                  <Button fx:id="btnImportMore" maxWidth="1.7976931348623157E308" mnemonicParsing="false" onAction="#onImportMoreClicked" text="Import More Images" />
                </children>
                <padding>
                   <Insets bottom="16.0" left="16.0" right="16.0" top="16.0" />
