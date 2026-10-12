@@ -12,7 +12,7 @@ public class Launcher extends  Application {
     @Override
     public void start(Stage stage) throws IOException {
 
-        FXMLLoader fxmlLoader = new FXMLLoader(Launcher.class.getResource("main-view.fxml"));
+        FXMLLoader fxmlLoader = new FXMLLoader(Launcher.class.getResource("drop-zone-view.fxml"));
         Scene scene = new Scene(fxmlLoader.load(), 1180, 780);
         stage.setTitle("Vector Magic - Raster to Vector Converter (SE233)");
         stage.setMinWidth(900);
