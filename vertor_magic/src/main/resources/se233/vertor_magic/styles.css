@@ -66,6 +66,7 @@
 .checkerboard-scroll {
     -fx-background-color: #fafafa;
     -fx-border-color: #dddddd;
+    -fx-cursor: open-hand;
 }
 
 .right-panel {

@@ -46,7 +46,7 @@
                   </HBox>
                   <ScrollPane fx:id="originalScrollPane" fitToHeight="true" fitToWidth="true" styleClass="checkerboard-scroll" VBox.vgrow="ALWAYS">
                      <content>
-                        <StackPane alignment="CENTER">
+                        <StackPane fx:id="originalContainer" alignment="CENTER">
                            <children>
                               <ImageView fx:id="originalImageView" pickOnBounds="true" preserveRatio="true" />
                            </children>
@@ -72,7 +72,11 @@
                      <content>
                         <StackPane fx:id="vectorContainer" alignment="CENTER">
                            <children>
-                              <Group fx:id="vectorGroup" />
+                              <Group>
+                                 <children>
+                                    <Group fx:id="vectorGroup" />
+                                 </children>
+                              </Group>
                            </children>
                         </StackPane>
                      </content>
