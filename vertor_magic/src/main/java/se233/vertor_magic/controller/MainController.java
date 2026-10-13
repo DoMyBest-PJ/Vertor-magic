@@ -4,9 +4,11 @@ import javafx.concurrent.Task;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
+import javafx.scene.Cursor;
 import javafx.scene.Group;
 import javafx.scene.control.*;
 import javafx.scene.image.ImageView;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
@@ -39,6 +41,7 @@ public class MainController implements Initializable {
 
     @FXML private SplitPane centerSplitPane;
     @FXML private ScrollPane originalScrollPane;
+    @FXML private StackPane originalContainer;
     @FXML private ImageView originalImageView;
     @FXML private Label lblOriginalInfo;
 
@@ -80,6 +83,13 @@ public class MainController implements Initializable {
     private int currentIndex = 0;
     private double currentZoomFactor = 1.0;
 
+    // Image Drag & Pan State
+    private double dragStartSceneX;
+    private double dragStartSceneY;
+    private double dragStartH;
+    private double dragStartV;
+    private boolean isSyncingScroll = false;
+
     private final BatchProcessingService batchProcessingService = new BatchProcessingService();
     private final FileExportService fileExportService = new FileExportService();
     private Task<Void> activeTracingTask;
@@ -98,6 +108,9 @@ public class MainController implements Initializable {
 
         // Initialize Parallel status badge
         updateParallelBadge();
+
+        // Setup image click-and-drag panning and scroll synchronization
+        setupImagePanning();
     }
 
     // =========================================================================
@@ -234,6 +247,14 @@ public class MainController implements Initializable {
     public void onZoomFitClicked(ActionEvent event) {
         currentZoomFactor = 1.0;
         applyZoom();
+        centerScrollPanes();
+    }
+
+    private void centerScrollPanes() {
+        originalScrollPane.setHvalue(0.5);
+        originalScrollPane.setVvalue(0.5);
+        vectorScrollPane.setHvalue(0.5);
+        vectorScrollPane.setVvalue(0.5);
     }
 
     private void applyZoom() {
@@ -253,6 +274,96 @@ public class MainController implements Initializable {
             vectorGroup.setScaleX(currentZoomFactor);
             vectorGroup.setScaleY(currentZoomFactor);
         }
+    }
+
+    // =========================================================================
+    // IMAGE PANNING (CLICK & DRAG TO SCROLL) & PREVIEW SYNCHRONIZATION
+    // =========================================================================
+
+    private void setupImagePanning() {
+        // Synchronize horizontal and vertical scrolling between both previews
+        originalScrollPane.hvalueProperty().addListener((obs, oldVal, newVal) -> {
+            if (!isSyncingScroll && newVal != null) {
+                isSyncingScroll = true;
+                vectorScrollPane.setHvalue(newVal.doubleValue());
+                isSyncingScroll = false;
+            }
+        });
+        originalScrollPane.vvalueProperty().addListener((obs, oldVal, newVal) -> {
+            if (!isSyncingScroll && newVal != null) {
+                isSyncingScroll = true;
+                vectorScrollPane.setVvalue(newVal.doubleValue());
+                isSyncingScroll = false;
+            }
+        });
+
+        vectorScrollPane.hvalueProperty().addListener((obs, oldVal, newVal) -> {
+            if (!isSyncingScroll && newVal != null) {
+                isSyncingScroll = true;
+                originalScrollPane.setHvalue(newVal.doubleValue());
+                isSyncingScroll = false;
+            }
+        });
+        vectorScrollPane.vvalueProperty().addListener((obs, oldVal, newVal) -> {
+            if (!isSyncingScroll && newVal != null) {
+                isSyncingScroll = true;
+                originalScrollPane.setVvalue(newVal.doubleValue());
+                isSyncingScroll = false;
+            }
+        });
+
+        // Configure click-and-drag panning on both preview canvas containers
+        configurePanHandlers(originalContainer, originalScrollPane);
+        configurePanHandlers(vectorContainer, vectorScrollPane);
+    }
+
+    private void configurePanHandlers(StackPane container, ScrollPane scrollPane) {
+        if (container == null) return;
+        container.setCursor(Cursor.OPEN_HAND);
+
+        container.addEventHandler(MouseEvent.MOUSE_PRESSED, event -> {
+            if (event.isPrimaryButtonDown()) {
+                if (originalContainer != null) originalContainer.setCursor(Cursor.CLOSED_HAND);
+                if (vectorContainer != null) vectorContainer.setCursor(Cursor.CLOSED_HAND);
+
+                dragStartSceneX = event.getSceneX();
+                dragStartSceneY = event.getSceneY();
+                dragStartH = scrollPane.getHvalue();
+                dragStartV = scrollPane.getVvalue();
+                event.consume();
+            }
+        });
+
+        container.addEventHandler(MouseEvent.MOUSE_DRAGGED, event -> {
+            if (event.isPrimaryButtonDown()) {
+                double deltaX = event.getSceneX() - dragStartSceneX;
+                double deltaY = event.getSceneY() - dragStartSceneY;
+
+                double scrollableW = container.getLayoutBounds().getWidth() - scrollPane.getViewportBounds().getWidth();
+                double scrollableH = container.getLayoutBounds().getHeight() - scrollPane.getViewportBounds().getHeight();
+
+                if (scrollableW > 0) {
+                    double newH = dragStartH - (deltaX / scrollableW);
+                    newH = Math.max(0.0, Math.min(1.0, newH));
+                    originalScrollPane.setHvalue(newH);
+                    vectorScrollPane.setHvalue(newH);
+                }
+
+                if (scrollableH > 0) {
+                    double newV = dragStartV - (deltaY / scrollableH);
+                    newV = Math.max(0.0, Math.min(1.0, newV));
+                    originalScrollPane.setVvalue(newV);
+                    vectorScrollPane.setVvalue(newV);
+                }
+                event.consume();
+            }
+        });
+
+        container.addEventHandler(MouseEvent.MOUSE_RELEASED, event -> {
+            if (originalContainer != null) originalContainer.setCursor(Cursor.OPEN_HAND);
+            if (vectorContainer != null) vectorContainer.setCursor(Cursor.OPEN_HAND);
+            event.consume();
+        });
     }
 
     // =========================================================================
