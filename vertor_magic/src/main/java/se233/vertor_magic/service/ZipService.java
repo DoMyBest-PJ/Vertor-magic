@@ -16,13 +16,7 @@ public class ZipService {
 
     private static final String[] SUPPORTED_EXTENSIONS = {".jpg", ".jpeg", ".png"};
 
-    /**
-     * Extracts all supported images from the given ZIP file.
-     *
-     * @param zipFile The ZIP file to extract
-     * @return List of extracted image Files
-     * @throws IOException If extraction fails or no supported images found
-     */
+
     public static List<File> extractImages(File zipFile) throws IOException {
         if (zipFile == null || !zipFile.exists()) {
             throw new FileNotFoundException("ZIP file not found: " + (zipFile != null ? zipFile.getName() : "null"));
