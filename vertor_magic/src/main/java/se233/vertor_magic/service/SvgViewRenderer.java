@@ -24,9 +24,6 @@ public class SvgViewRenderer {
 
     /**
      * Converts an SVG XML string into a native JavaFX Group of SVGPath shapes.
-     *
-     * @param svgContent The SVG markup string
-     * @return JavaFX Group containing the rendered vector paths
      */
     public static Group renderSvgToGroup(String svgContent) {
         Group group = new Group();

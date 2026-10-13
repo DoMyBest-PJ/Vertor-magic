@@ -122,7 +122,7 @@ public class ImageTracer{
 	}
 
 
-	// https://developer.mozilla.org/en-US/docs/Web/API/ImageData
+
 	public static class ImageData{
 		public int width, height;
 		public byte[] data; // raw byte data: R G B A R G B A ...
@@ -184,6 +184,7 @@ public class ImageTracer{
 		ImageData imgd = loadImageData(filename);
 		return imagedataToSVG(imgd,options,palette);
 	}// End of imageToSVG()
+
 	public static String imageToSVG (BufferedImage image, HashMap<String,Float> options, byte [][] palette) throws Exception{
 		options = checkoptions(options);
 		ImageData imgd = loadImageData(image);

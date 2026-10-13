@@ -13,10 +13,6 @@ public class ImagePreconditioner {
      * Applies an adaptive edge-directed shock and denoising filter.
      * Sharpens text and logo outlines, eliminates JPEG ringing in solid shapes,
      * and maintains smooth tonal transitions in gradient regions.
-     *
-     * @param src            Source image
-     * @param colorTolerance Maximum local color span considered homogeneous for denoising
-     * @return Filtered image optimized for vector tracing
      */
     public static BufferedImage denoise(BufferedImage src, int colorTolerance) {
         if (src == null) return null;
