@@ -13,10 +13,8 @@
       <VBox fx:id="dropCard" alignment="CENTER" maxHeight="450.0" maxWidth="650.0" onDragDropped="#onDropZoneDropped" onDragExited="#onDropZoneExited" onDragOver="#onDropZoneOver" spacing="16.0" styleClass="drop-card" VBox.vgrow="NEVER">
          <children>
             <Label styleClass="drop-title" text="Vector Magic" />
-            <Label styleClass="drop-subtitle" text="Convert Raster Images (JPG, PNG) into Scalable Vector Graphics (SVG)" />
             <Region prefHeight="10.0" />
             <Label styleClass="drop-instruction" text="Drag &amp; Drop Images or ZIP Archive Here" />
-            <Label styleClass="badge-format" text="Supported: Single JPG/PNG, Multiple JPG/PNG, or ZIP Archive containing images" />
             <Region prefHeight="10.0" />
             <HBox alignment="CENTER" spacing="15.0">
                <children>
