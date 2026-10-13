@@ -6,7 +6,6 @@ import se233.vertor_magic.model.ImageItem;
 
 import java.io.File;
 import java.io.FileWriter;
-import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -16,13 +15,11 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
 /**
- * Handles exporting all imported images as SVG files to a user-selected destination directory.
- * Implements Task 8, Task 9, and Task 12 (Export record & folder opener).
+ * Handles batch SVG export, conditional parallel export execution, and export history tracking.
  */
 public class FileExportService {
 
@@ -39,7 +36,6 @@ public class FileExportService {
     }
 
     private static final List<ExportRecord> exportHistory = new ArrayList<>();
-    private final AtomicBoolean isCancelled = new AtomicBoolean(false);
     private ExecutorService exportExecutor;
 
     public static List<ExportRecord> getExportHistory() {
@@ -48,7 +44,7 @@ public class FileExportService {
 
     /**
      * Exports all items to the chosen destination folder.
-     * Uses Task 9 conditional parallel processing:
+     * Uses conditional parallel processing:
      * - Medium + Custom (2-5 colors) -> parallel threads.
      * - Otherwise -> single sequential thread.
      */
@@ -69,9 +65,7 @@ public class FileExportService {
             return;
         }
 
-        isCancelled.set(false);
-
-        // Task 9 check
+        // Check conditional parallel processing eligibility
         boolean isParallel = activeSettings != null && activeSettings.isParallelEligible() && items.size() > 1;
         int threadCount = isParallel ? Math.min(items.size(), Math.max(2, Runtime.getRuntime().availableProcessors())) : 1;
         String modeDesc = isParallel ? "Parallel Export (" + threadCount + " threads)" : "Sequential Export (1 thread)";
@@ -94,11 +88,7 @@ public class FileExportService {
             List<Future<?>> futures = new ArrayList<>();
 
             for (ImageItem item : items) {
-                if (isCancelled.get()) break;
-
                 Future<?> future = exportExecutor.submit(() -> {
-                    if (isCancelled.get()) return;
-
                     try {
                         // Ensure SVG content is generated with up-to-date settings
                         if (item.getSvgContent() == null || !item.isProcessed() ||
@@ -131,17 +121,15 @@ public class FileExportService {
                         item.setProcessingError("Export failed: " + e.getMessage());
                     }
 
-                    if (!isCancelled.get()) {
-                        int finished = completedCount.incrementAndGet();
-                        double progress = (double) finished / total;
+                    int finished = completedCount.incrementAndGet();
+                    double progress = (double) finished / total;
 
-                        Platform.runLater(() -> {
-                            if (progressCallback != null) progressCallback.accept(progress);
-                            if (statusCallback != null) {
-                                statusCallback.accept("Exported " + finished + "/" + total + " SVG files [" + modeDesc + "]");
-                            }
-                        });
-                    }
+                    Platform.runLater(() -> {
+                        if (progressCallback != null) progressCallback.accept(progress);
+                        if (statusCallback != null) {
+                            statusCallback.accept("Exported " + finished + "/" + total + " SVG files [" + modeDesc + "]");
+                        }
+                    });
                 });
                 futures.add(future);
             }
@@ -158,26 +146,14 @@ public class FileExportService {
             }
 
             Platform.runLater(() -> {
-                if (isCancelled.get()) {
-                    if (statusCallback != null) statusCallback.accept("Export cancelled by user.");
-                    if (onErrorCallback != null) onErrorCallback.accept("Export was cancelled. " + savedFiles.size() + " files were saved.");
-                } else {
-                    exportHistory.add(new ExportRecord(outputDirectory, new ArrayList<>(savedFiles)));
-                    if (statusCallback != null) {
-                        statusCallback.accept("Export complete! Saved " + savedFiles.size() + " SVG files to " + outputDirectory.getName());
-                    }
-                    if (onCompletedCallback != null) {
-                        onCompletedCallback.accept(new ArrayList<>(savedFiles));
-                    }
+                exportHistory.add(new ExportRecord(outputDirectory, new ArrayList<>(savedFiles)));
+                if (statusCallback != null) {
+                    statusCallback.accept("Export complete! Saved " + savedFiles.size() + " SVG files to " + outputDirectory.getName());
+                }
+                if (onCompletedCallback != null) {
+                    onCompletedCallback.accept(new ArrayList<>(savedFiles));
                 }
             });
         }, "SVG-Export-Dispatcher").start();
-    }
-
-    public void cancel() {
-        isCancelled.set(true);
-        if (exportExecutor != null && !exportExecutor.isShutdown()) {
-            exportExecutor.shutdownNow();
-        }
     }
 }

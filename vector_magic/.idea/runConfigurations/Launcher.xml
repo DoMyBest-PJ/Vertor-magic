@@ -1,9 +1,0 @@
-﻿<component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="Launcher" type="Application" factoryName="Application">
-    <option name="MAIN_CLASS_NAME" value="se233.vector_magic.Launcher" />
-    <module name="vector_magic" />
-    <method v="2">
-      <option name="Make" enabled="true" />
-    </method>
-  </configuration>
-</component>

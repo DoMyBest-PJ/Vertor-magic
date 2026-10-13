@@ -9,7 +9,7 @@ import se233.vertor_magic.model.DetailLevel;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Verifies Task 9: Conditional Parallel Processing requirements:
+ * Verifies Conditional Parallel Processing requirements:
  * Both conditions must be satisfied:
  * 1. Detail level is Medium.
  * 2. Color mode is Custom, with color limit up to 5 and default 2.

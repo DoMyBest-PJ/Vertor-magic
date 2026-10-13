@@ -1,20 +1,18 @@
 package se233.vertor_magic.controller;
 
-import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
+import javafx.scene.Cursor;
+import javafx.scene.Group;
 import javafx.scene.control.*;
 import javafx.scene.image.ImageView;
-import javafx.scene.input.DragEvent;
-import javafx.scene.input.Dragboard;
-import javafx.scene.input.TransferMode;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
-import javafx.scene.Group;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.FileChooser;
 import se233.vertor_magic.model.ColorMode;
@@ -25,22 +23,15 @@ import se233.vertor_magic.service.*;
 
 import java.awt.Desktop;
 import java.io.File;
-import java.io.IOException;
 import java.net.URL;
 import java.util.*;
 
 /**
- * Main Controller for Vector Magic.
- * Coordinates File Input / Drop Zone, Main Editor, Navigation,
- * Settings Configuration, Zoom Controls, Batch Preprocessing, and Export All.
+ * Main Editor Controller for main-view.fxml.
+ * Coordinates the Main Editor, Navigation, Settings Configuration,
+ * Zoom Controls, Batch Preprocessing, and Export All.
  */
 public class MainController implements Initializable {
-
-    @FXML private StackPane rootPane;
-    @FXML private VBox dropZoneContainer;
-    @FXML private VBox dropCard;
-    @FXML private Button btnBrowseFiles;
-    @FXML private Button btnBrowseZip;
 
     @FXML private BorderPane editorContainer;
     @FXML private HBox topToolBar;
@@ -50,6 +41,7 @@ public class MainController implements Initializable {
 
     @FXML private SplitPane centerSplitPane;
     @FXML private ScrollPane originalScrollPane;
+    @FXML private StackPane originalContainer;
     @FXML private ImageView originalImageView;
     @FXML private Label lblOriginalInfo;
 
@@ -79,7 +71,6 @@ public class MainController implements Initializable {
     @FXML private CheckBox chkRemoveBackground;
 
     @FXML private Button btnResetSettings;
-    @FXML private Button btnCancel;
     @FXML private Button btnHistory;
     @FXML private Button btnExportAll;
     @FXML private Button btnImportMore;
@@ -91,6 +82,13 @@ public class MainController implements Initializable {
     private final List<ImageItem> imageItems = new ArrayList<>();
     private int currentIndex = 0;
     private double currentZoomFactor = 1.0;
+
+    // Image Drag & Pan State
+    private double dragStartSceneX;
+    private double dragStartSceneY;
+    private double dragStartH;
+    private double dragStartV;
+    private boolean isSyncingScroll = false;
 
     private final BatchProcessingService batchProcessingService = new BatchProcessingService();
     private final FileExportService fileExportService = new FileExportService();
@@ -110,68 +108,14 @@ public class MainController implements Initializable {
 
         // Initialize Parallel status badge
         updateParallelBadge();
+
+        // Setup image click-and-drag panning and scroll synchronization
+        setupImagePanning();
     }
 
     // =========================================================================
-    // TASK 1: FILE INPUT & DRAG AND DROP
+    // FILE IMPORT INTO EDITOR
     // =========================================================================
-
-    @FXML
-    public void onDropZoneOver(DragEvent event) {
-        if (event.getDragboard().hasFiles()) {
-            event.acceptTransferModes(TransferMode.COPY);
-            if (!dropCard.getStyleClass().contains("drop-card-active")) {
-                dropCard.getStyleClass().add("drop-card-active");
-            }
-        }
-        event.consume();
-    }
-
-    @FXML
-    public void onDropZoneExited(DragEvent event) {
-        dropCard.getStyleClass().remove("drop-card-active");
-        event.consume();
-    }
-
-    @FXML
-    public void onDropZoneDropped(DragEvent event) {
-        Dragboard db = event.getDragboard();
-        boolean success = false;
-        if (db.hasFiles()) {
-            List<File> files = db.getFiles();
-            importFiles(files);
-            success = true;
-        }
-        event.setDropCompleted(success);
-        dropCard.getStyleClass().remove("drop-card-active");
-        event.consume();
-    }
-
-    @FXML
-    public void onBrowseFilesClicked(ActionEvent event) {
-        FileChooser chooser = new FileChooser();
-        chooser.setTitle("Select Image Files (JPG / PNG)");
-        chooser.getExtensionFilters().add(
-                new FileChooser.ExtensionFilter("Image Files (*.png, *.jpg, *.jpeg)", "*.png", "*.jpg", "*.jpeg")
-        );
-        List<File> selected = chooser.showOpenMultipleDialog(rootPane.getScene().getWindow());
-        if (selected != null && !selected.isEmpty()) {
-            importFiles(selected);
-        }
-    }
-
-    @FXML
-    public void onBrowseZipClicked(ActionEvent event) {
-        FileChooser chooser = new FileChooser();
-        chooser.setTitle("Select ZIP Archive");
-        chooser.getExtensionFilters().add(
-                new FileChooser.ExtensionFilter("ZIP Archive (*.zip)", "*.zip")
-        );
-        File zipFile = chooser.showOpenDialog(rootPane.getScene().getWindow());
-        if (zipFile != null) {
-            importFiles(Collections.singletonList(zipFile));
-        }
-    }
 
     @FXML
     public void onImportMoreClicked(ActionEvent event) {
@@ -182,14 +126,22 @@ public class MainController implements Initializable {
                 new FileChooser.ExtensionFilter("Images", "*.png", "*.jpg", "*.jpeg"),
                 new FileChooser.ExtensionFilter("ZIP Archives", "*.zip")
         );
-        List<File> selected = chooser.showOpenMultipleDialog(rootPane.getScene().getWindow());
+        List<File> selected = chooser.showOpenMultipleDialog(editorContainer.getScene().getWindow());
         if (selected != null && !selected.isEmpty()) {
             importFiles(selected);
         }
     }
 
-    private void importFiles(List<File> rawFiles) {
-        if (rawFiles == null || rawFiles.isEmpty()) return;
+    /**
+     * Imports a list of image or ZIP files into the editor.
+     * Called by DropZoneController when transitioning from drop-zone-view.fxml,
+     * or by onImportMoreClicked inside the editor.
+     *
+     * @param rawFiles List of selected or dropped files
+     * @return true if at least one valid image was loaded
+     */
+    public boolean importFiles(List<File> rawFiles) {
+        if (rawFiles == null || rawFiles.isEmpty()) return false;
 
         List<File> imagesToLoad = new ArrayList<>();
         List<String> errors = new ArrayList<>();
@@ -217,7 +169,7 @@ public class MainController implements Initializable {
             if (imageItems.isEmpty()) {
                 lblStatus.setText("No valid images imported.");
             }
-            return;
+            return false;
         }
 
         // Convert files to ImageItem objects
@@ -231,30 +183,26 @@ public class MainController implements Initializable {
             }
         }
 
-        if (newItems.isEmpty()) return;
+        if (newItems.isEmpty()) return false;
 
         boolean wasEmpty = imageItems.isEmpty();
         imageItems.addAll(newItems);
-
-        // Transition from Drop Zone to Editor
-        dropZoneContainer.setVisible(false);
-        dropZoneContainer.setManaged(false);
-        editorContainer.setVisible(true);
-        editorContainer.setManaged(true);
 
         if (wasEmpty) {
             currentIndex = 0;
             updateEditorUI();
         }
 
-        // Task 7: Batch Preprocessing (concurrent across files, progress feedback)
+        // Batch Preprocessing (concurrent across files, progress feedback)
         if (imageItems.size() > 1 || !imageItems.get(currentIndex).isProcessed()) {
             startBatchPreprocessing();
         }
+
+        return true;
     }
 
     // =========================================================================
-    // TASK 7: BATCH PREPROCESSING
+    // BATCH PREPROCESSING
     // =========================================================================
 
     private void startBatchPreprocessing() {
@@ -280,7 +228,7 @@ public class MainController implements Initializable {
     }
 
     // =========================================================================
-    // TASK 2.B: TOP PANEL (ZOOM IN, ZOOM OUT, ZOOM TO FIT)
+    // TOP TOOLBAR: ZOOM CONTROLS (ZOOM IN, ZOOM OUT, ZOOM TO FIT)
     // =========================================================================
 
     @FXML
@@ -299,6 +247,14 @@ public class MainController implements Initializable {
     public void onZoomFitClicked(ActionEvent event) {
         currentZoomFactor = 1.0;
         applyZoom();
+        centerScrollPanes();
+    }
+
+    private void centerScrollPanes() {
+        originalScrollPane.setHvalue(0.5);
+        originalScrollPane.setVvalue(0.5);
+        vectorScrollPane.setHvalue(0.5);
+        vectorScrollPane.setVvalue(0.5);
     }
 
     private void applyZoom() {
@@ -321,7 +277,97 @@ public class MainController implements Initializable {
     }
 
     // =========================================================================
-    // TASK 3: IMAGE NAVIGATION (BACK & NEXT)
+    // IMAGE PANNING (CLICK & DRAG TO SCROLL) & PREVIEW SYNCHRONIZATION
+    // =========================================================================
+
+    private void setupImagePanning() {
+        // Synchronize horizontal and vertical scrolling between both previews
+        originalScrollPane.hvalueProperty().addListener((obs, oldVal, newVal) -> {
+            if (!isSyncingScroll && newVal != null) {
+                isSyncingScroll = true;
+                vectorScrollPane.setHvalue(newVal.doubleValue());
+                isSyncingScroll = false;
+            }
+        });
+        originalScrollPane.vvalueProperty().addListener((obs, oldVal, newVal) -> {
+            if (!isSyncingScroll && newVal != null) {
+                isSyncingScroll = true;
+                vectorScrollPane.setVvalue(newVal.doubleValue());
+                isSyncingScroll = false;
+            }
+        });
+
+        vectorScrollPane.hvalueProperty().addListener((obs, oldVal, newVal) -> {
+            if (!isSyncingScroll && newVal != null) {
+                isSyncingScroll = true;
+                originalScrollPane.setHvalue(newVal.doubleValue());
+                isSyncingScroll = false;
+            }
+        });
+        vectorScrollPane.vvalueProperty().addListener((obs, oldVal, newVal) -> {
+            if (!isSyncingScroll && newVal != null) {
+                isSyncingScroll = true;
+                originalScrollPane.setVvalue(newVal.doubleValue());
+                isSyncingScroll = false;
+            }
+        });
+
+        // Configure click-and-drag panning on both preview canvas containers
+        configurePanHandlers(originalContainer, originalScrollPane);
+        configurePanHandlers(vectorContainer, vectorScrollPane);
+    }
+
+    private void configurePanHandlers(StackPane container, ScrollPane scrollPane) {
+        if (container == null) return;
+        container.setCursor(Cursor.OPEN_HAND);
+
+        container.addEventHandler(MouseEvent.MOUSE_PRESSED, event -> {
+            if (event.isPrimaryButtonDown()) {
+                if (originalContainer != null) originalContainer.setCursor(Cursor.CLOSED_HAND);
+                if (vectorContainer != null) vectorContainer.setCursor(Cursor.CLOSED_HAND);
+
+                dragStartSceneX = event.getSceneX();
+                dragStartSceneY = event.getSceneY();
+                dragStartH = scrollPane.getHvalue();
+                dragStartV = scrollPane.getVvalue();
+                event.consume();
+            }
+        });
+
+        container.addEventHandler(MouseEvent.MOUSE_DRAGGED, event -> {
+            if (event.isPrimaryButtonDown()) {
+                double deltaX = event.getSceneX() - dragStartSceneX;
+                double deltaY = event.getSceneY() - dragStartSceneY;
+
+                double scrollableW = container.getLayoutBounds().getWidth() - scrollPane.getViewportBounds().getWidth();
+                double scrollableH = container.getLayoutBounds().getHeight() - scrollPane.getViewportBounds().getHeight();
+
+                if (scrollableW > 0) {
+                    double newH = dragStartH - (deltaX / scrollableW);
+                    newH = Math.max(0.0, Math.min(1.0, newH));
+                    originalScrollPane.setHvalue(newH);
+                    vectorScrollPane.setHvalue(newH);
+                }
+
+                if (scrollableH > 0) {
+                    double newV = dragStartV - (deltaY / scrollableH);
+                    newV = Math.max(0.0, Math.min(1.0, newV));
+                    originalScrollPane.setVvalue(newV);
+                    vectorScrollPane.setVvalue(newV);
+                }
+                event.consume();
+            }
+        });
+
+        container.addEventHandler(MouseEvent.MOUSE_RELEASED, event -> {
+            if (originalContainer != null) originalContainer.setCursor(Cursor.OPEN_HAND);
+            if (vectorContainer != null) vectorContainer.setCursor(Cursor.OPEN_HAND);
+            event.consume();
+        });
+    }
+
+    // =========================================================================
+    // IMAGE NAVIGATION (BACK & NEXT)
     // =========================================================================
 
     @FXML
@@ -348,7 +394,7 @@ public class MainController implements Initializable {
     }
 
     // =========================================================================
-    // TASK 4, 5, 6: CONFIGURATION (DETAIL, COLOR, BACKGROUND) & INSTANT PREVIEW
+    // CONVERSION CONFIGURATION (DETAIL, COLOR, BACKGROUND) & INSTANT PREVIEW
     // =========================================================================
 
     @FXML
@@ -429,7 +475,7 @@ public class MainController implements Initializable {
     }
 
     // =========================================================================
-    // TASK 8: EXPORT ALL
+    // BATCH SVG EXPORT (EXPORT ALL)
     // =========================================================================
 
     @FXML
@@ -441,7 +487,7 @@ public class MainController implements Initializable {
 
         DirectoryChooser chooser = new DirectoryChooser();
         chooser.setTitle("Select Destination Folder for SVG Export");
-        File selectedDir = chooser.showDialog(rootPane.getScene().getWindow());
+        File selectedDir = chooser.showDialog(editorContainer.getScene().getWindow());
 
         if (selectedDir != null) {
             progressBar.setProgress(0.0);
@@ -463,7 +509,7 @@ public class MainController implements Initializable {
     }
 
     // =========================================================================
-    // TASK 12: ADDITIONAL FEATURES (RESET, CANCEL, HISTORY)
+    // EXTRA TOOLS (RESET SETTINGS & EXPORT HISTORY)
     // =========================================================================
 
     @FXML
@@ -478,17 +524,6 @@ public class MainController implements Initializable {
 
         onSettingChanged();
         lblStatus.setText("Settings reset to defaults (Medium detail, Custom 2 colors, opaque).");
-    }
-
-    @FXML
-    public void onCancelClicked(ActionEvent event) {
-        batchProcessingService.cancel();
-        fileExportService.cancel();
-        if (activeTracingTask != null && activeTracingTask.isRunning()) {
-            activeTracingTask.cancel();
-        }
-        progressBar.setProgress(0.0);
-        lblStatus.setText("Active processing cancelled.");
     }
 
     @FXML
@@ -553,7 +588,7 @@ public class MainController implements Initializable {
         int detected = current.getDetectedColorCount();
         lblDetectedColors.setText("Detected Colors: " + detected);
 
-        // Task 5: Cap custom selection limit at 5 if image contains > 5 colors
+        // Cap custom color selection limit at 5 if image contains > 5 colors
         int maxAllowed = ColorDetector.getCustomColorUpperLimit(detected);
         int currentVal = current.getSettings().getCustomColorCount();
         int safeVal = Math.min(maxAllowed, Math.max(2, currentVal));
@@ -614,10 +649,10 @@ public class MainController implements Initializable {
     private void updateParallelBadge() {
         ConversionSettings s = buildCurrentSettingsFromUI();
         if (s.isParallelEligible()) {
-            lblParallelStatus.setText("Task 9: Parallel Mode (Medium + Custom)");
+            lblParallelStatus.setText("Parallel Mode (Medium + Custom)");
             lblParallelStatus.getStyleClass().setAll("parallel-badge");
         } else {
-            lblParallelStatus.setText("Task 9: Sequential Mode (" + s.getDetailLevel() + " + " + s.getColorMode() + ")");
+            lblParallelStatus.setText("Sequential Mode (" + s.getDetailLevel() + " + " + s.getColorMode() + ")");
             lblParallelStatus.getStyleClass().setAll("sequential-badge");
         }
     }
