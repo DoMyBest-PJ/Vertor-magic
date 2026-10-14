@@ -38,20 +38,6 @@ public class ImageItem {
         this.isProcessed = false;
     }
 
-//    public ImageItem(File file, BufferedImage bi) {
-//        this.sourceFile = file;
-//        this.originalFileName = file != null ? file.getName() : "extracted_image.png";
-//        this.bufferedImage = bi;
-//        if (file != null && file.exists()) {
-//            this.fxImage = new Image(file.toURI().toString());
-//        }
-//        this.settings = new ConversionSettings();
-//        this.isProcessed = false;
-//    }
-
-//    public File getSourceFile() {
-//        return sourceFile;
-//    }
 
     public String getOriginalFileName() {
         return originalFileName;
