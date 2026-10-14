@@ -18,6 +18,7 @@ public class ZipService {
 
 
     public static List<File> extractImages(File zipFile) throws IOException {
+
         if (zipFile == null || !zipFile.exists()) {
             throw new FileNotFoundException("ZIP file not found: " + (zipFile != null ? zipFile.getName() : "null"));
         }
